@@ -25,4 +25,15 @@ class Configuracion extends Model
     {
         static::updateOrCreate(['clave' => 'precio_unitario'], ['valor' => $valor]);
     }
+
+    /** @return string[] destinatarios de los reportes programados. */
+    public static function correosReportes(): array
+    {
+        return array_values(array_filter(array_map('trim', preg_split('/[,;\s]+/', (string) static::find('correos_reportes')?->valor))));
+    }
+
+    public static function setCorreosReportes(array $correos): void
+    {
+        static::updateOrCreate(['clave' => 'correos_reportes'], ['valor' => implode(', ', $correos)]);
+    }
 }

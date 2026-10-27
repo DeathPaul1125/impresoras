@@ -21,4 +21,16 @@
             <x-primary-button wire:click="guardar" type="button">Guardar</x-primary-button>
         </div>
     </div>
+
+    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 mt-6">
+        <label class="block text-sm font-medium text-gray-700">Correos para reportes</label>
+        <p class="text-xs text-gray-500 mb-2">Separados por coma. Reciben el consumo por impresora: diario (6 pm), los viernes (lunes a viernes) y el último día del mes.</p>
+        <textarea wire:model="correos_reportes" rows="2" placeholder="informatica@senabed.gob.gt, ..."
+                  class="py-2 px-3 block w-full border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+        @error('correos_reportes') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+
+        <div class="mt-5">
+            <x-primary-button wire:click="guardarCorreos" type="button">Guardar correos</x-primary-button>
+        </div>
+    </div>
 </div>
