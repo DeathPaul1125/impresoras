@@ -53,4 +53,19 @@ class SeedersTest extends TestCase
         $this->assertSame(1, Corte::where('contador', 999999)->count());
         $this->assertSame($hash, User::first()->password);
     }
+
+    public function test_admin_inicial_entra_con_la_contrasena_por_defecto_y_se_puede_restablecer(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $admin = User::where('email', DatabaseSeeder::ADMIN_EMAIL)->first();
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check(DatabaseSeeder::ADMIN_PASSWORD, $admin->password));
+
+        // Contraseña desconocida en el servidor: el comando la restablece.
+        $admin->update(['password' => bcrypt('otra-que-nadie-sabe')]);
+        $this->artisan('impresoras:admin')->assertSuccessful();
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check(DatabaseSeeder::ADMIN_PASSWORD, $admin->fresh()->password));
+
+        $this->artisan('impresoras:admin', ['--email' => 'nuevo@senabed.gob.gt', '--password' => 'Clave-Segura-1'])->assertSuccessful();
+        $this->assertSame('admin', User::where('email', 'nuevo@senabed.gob.gt')->value('role'));
+    }
 }

@@ -29,3 +29,7 @@ Thumbs.db
 
 # Datos de trabajo locales (exportes, correos guardados): no se versionan
 /data
+
+# Artefactos de diseño locales (bocetos, capturas)
+/.impeccable/mocks
+/.impeccable/review

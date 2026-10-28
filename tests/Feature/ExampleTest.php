@@ -14,6 +14,6 @@ class ExampleTest extends TestCase
     {
         // Sin portada: la raíz manda al dashboard y, sin sesión, termina en el login.
         $this->get('/')->assertRedirect('/dashboard');
-        $this->followingRedirects()->get('/')->assertOk()->assertSee('Iniciar sesión');
+        $this->followingRedirects()->get('/')->assertOk()->assertSee('Acceso al sistema de contadores');
     }
 }

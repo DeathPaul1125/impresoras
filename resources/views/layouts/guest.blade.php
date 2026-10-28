@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>Iniciar sesión · {{ config('app.name', 'Contadores SENABED') }}</title>
+        <title>Acceso · Contadores SENABED</title>
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
@@ -13,56 +13,34 @@
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans antialiased h-full bg-papel text-tinta">
-        <div class="min-h-full grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-            {{-- Panel institucional --}}
-            <aside class="hidden lg:flex flex-col justify-between bg-marino text-white px-12 py-10">
-                <div class="flex items-center gap-3">
-                    <span class="inline-flex items-center justify-center size-10 rounded-lg bg-white/10 ring-1 ring-white/15"><i class="fas fa-print"></i></span>
-                    <div class="leading-tight">
-                        <div class="font-semibold tracking-tight">Contadores</div>
-                        <div class="text-xs text-slate-400">SENABED · Multifuncionales</div>
+    {{-- La mesa: marino institucional con la pauta tenue de un cuaderno de registro. --}}
+    <body class="font-sans antialiased min-h-full bg-marino text-tinta
+                 bg-[linear-gradient(rgba(255,255,255,.045)_1px,transparent_1px)] bg-[size:100%_30px]">
+        <main class="min-h-screen flex flex-col items-center justify-center px-4 py-10 sm:py-16">
+            {{-- El oficio --}}
+            <article x-data="{ sacudir: false }" x-on:oficio-error.window="sacudir = false; $nextTick(() => sacudir = true)"
+                     :class="sacudir && 'sacudir'"
+                     class="relative w-full max-w-[640px] bg-bond rounded-[3px] px-6 py-8 sm:px-14 sm:py-12
+                            shadow-[0_1px_0_rgba(255,255,255,.6)_inset,0_24px_60px_-12px_rgba(0,0,0,.55),0_8px_18px_-8px_rgba(0,0,0,.35)]">
+                {{-- Membrete --}}
+                <header>
+                    <img src="{{ asset('img/logo-senabed-die.png') }}" alt="Secretaría Nacional de Administración de Bienes en Extinción de Dominio · Dirección de Informática y Estadística"
+                         class="w-full max-w-[400px] h-auto select-none" draggable="false">
+                    <div class="mt-4 h-[3px] bg-cian"></div>
+                    <div class="mt-3 flex flex-wrap justify-between gap-x-6 gap-y-1 font-oficio font-semibold text-[14px] text-tinta-2 cifra">
+                        <span>Ref.: DIE · Sistema de Contadores</span>
+                        <span>Guatemala, {{ now()->locale('es')->translatedFormat('j \d\e F \d\e Y') }}</span>
                     </div>
-                </div>
+                </header>
 
-                <div class="max-w-md">
-                    <h1 class="text-3xl font-bold tracking-tight leading-tight">Consumo de copias e impresiones</h1>
-                    <p class="mt-3 text-slate-300">Control del contrato de impresión: lecturas automáticas de cada multifuncional, cortes mensuales y reportes por correo.</p>
-
-                    <ul class="mt-8 space-y-4 text-sm">
-                        @foreach ([
-                            ['fa-satellite-dish', 'Lecturas diarias', 'Los contadores de las 7 impresoras se leen solos cada día a las 6 pm.'],
-                            ['fa-layer-group', 'Bolsón del contrato', 'Consumo acumulado, saldo disponible y proyección de agotamiento.'],
-                            ['fa-envelope-open-text', 'Reportes automáticos', 'Diario, semanal y de corte, con Excel y PDF.'],
-                        ] as [$icono, $titulo, $texto])
-                            <li class="flex gap-3">
-                                <span class="shrink-0 inline-flex items-center justify-center size-9 rounded-lg bg-white/10 text-sky-300"><i class="fas {{ $icono }}"></i></span>
-                                <div>
-                                    <div class="font-semibold">{{ $titulo }}</div>
-                                    <div class="text-slate-400">{{ $texto }}</div>
-                                </div>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
-
-                <div class="text-xs text-slate-500">Dirección de Informática y Estadística · {{ date('Y') }}</div>
-            </aside>
-
-            {{-- Formulario --}}
-            <main class="flex flex-col justify-center px-6 py-12 sm:px-12">
-                <div class="w-full max-w-sm mx-auto">
-                    <div class="lg:hidden flex items-center gap-3 mb-10">
-                        <span class="inline-flex items-center justify-center size-10 rounded-lg bg-marino text-white"><i class="fas fa-print"></i></span>
-                        <div class="leading-tight">
-                            <div class="font-semibold">Contadores</div>
-                            <div class="text-xs text-tinta-3">SENABED · Multifuncionales</div>
-                        </div>
-                    </div>
-
+                <div class="mt-10">
                     {{ $slot }}
                 </div>
-            </main>
-        </div>
+            </article>
+
+            <p class="mt-6 text-xs text-[#a8b8da] text-center">
+                Uso exclusivo de la red interna de SENABED · Dirección de Informática y Estadística
+            </p>
+        </main>
     </body>
 </html>
