@@ -9,7 +9,9 @@ use App\Models\Dispositivo;
 use App\Models\User;
 use App\Support\Contrato;
 use Database\Seeders\CortesHistoricosSeeder;
+use App\Livewire\DashboardGeneral;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class ContratoTest extends TestCase
@@ -81,5 +83,27 @@ class ContratoTest extends TestCase
         $this->get('/export/pdf/resumen')->assertOk()->assertDownload();
         $this->get('/configuracion')->assertOk()->assertSee('Guardar contrato');
         $this->assertSame(25, Configuracion::contrato()['dia_corte']);
+    }
+
+    public function test_dashboard_interactivo_selecciona_impresora_y_corte(): void
+    {
+        $this->impresoras();
+        $this->actingAs(User::create(['name' => 'A', 'email' => 'a@a.com', 'password' => bcrypt('x'), 'role' => 'admin']));
+        $dab = Dispositivo::where('ubicacion', 'DAB 7o.')->first();
+
+        Livewire::test(DashboardGeneral::class)
+            ->assertDontSee('Producido en cada corte')
+            ->call('seleccionarEquipo', $dab->id)
+            ->assertSet('equipo', $dab->id)
+            ->assertSee('Producido en cada corte')          // ficha de la impresora
+            ->assertSee('138,796')                          // su acumulado ene–sep
+            ->call('seleccionarPeriodo', '2026-08-26')
+            ->assertSet('periodo', '2026-08-26')
+            ->assertSee('corte del 26/08/2026')
+            ->assertSee('66,140')                           // producido total de agosto
+            ->call('seleccionarEquipo', $dab->id)           // segundo clic = quitar
+            ->assertSet('equipo', null)
+            ->call('limpiar')
+            ->assertSet('periodo', null);
     }
 }

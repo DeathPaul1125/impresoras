@@ -33,7 +33,7 @@
                     if (!o) return;
                     const { ctx } = chart;
                     ctx.save(); ctx.font = '700 11px Figtree, sans-serif'; ctx.textAlign = 'center';
-                    chart.data.datasets.forEach((ds, i) => chart.getDatasetMeta(i).data.forEach((el, j) => {
+                    chart.data.datasets.forEach((ds, i) => !ds.sinEtiquetas && chart.isDatasetVisible(i) && chart.getDatasetMeta(i).data.forEach((el, j) => {
                         const v = ds.data[j];
                         if (v === null || v === undefined) return;
                         if (chart.config.type === 'doughnut') {

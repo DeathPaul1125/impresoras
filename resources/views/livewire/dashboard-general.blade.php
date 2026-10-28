@@ -1,17 +1,20 @@
 @php
     $n = fn ($v) => $v === null ? '—' : number_format((int) $v);
     $f = fn ($d) => $d?->format('d/m/Y');
+    $mes = fn ($d) => $d ? $d->locale('es')->translatedFormat('F') : '';
     $periodos = $r['periodos'];
     $ultimo = $periodos->last();
     $equipos = $r['por_equipo']->sortByDesc('acumulado')->values();
     $max = max(1, (int) $equipos->max('acumulado'));
     $primerMes = $periodos->first()?->fecha->locale('es')->translatedFormat('M');
     $ultimoMes = $ultimo?->fecha->locale('es')->translatedFormat('M Y');
+    $atenuar = fn ($id) => $equipo && $equipo !== $id;
+    $selNombre = $ficha['e']->ubicacion ?? null;
     $iconos = [
-        'blue' => 'bg-blue-600', 'green' => 'bg-green-700', 'navy' => 'bg-[#0d2149]', 'purple' => 'bg-purple-700',
+        'blue' => 'bg-blue-600', 'green' => 'bg-green-700', 'navy' => 'bg-marino', 'purple' => 'bg-purple-700',
         'orange' => 'bg-orange-500', 'teal' => 'bg-cyan-700', 'amber' => 'bg-amber-500', 'red' => 'bg-red-600',
     ];
-    $titulos = ['blue' => 'text-blue-800', 'green' => 'text-green-700', 'navy' => 'text-[#0d2149]', 'purple' => 'text-purple-800',
+    $titulos = ['blue' => 'text-blue-800', 'green' => 'text-green-700', 'navy' => 'text-marino', 'purple' => 'text-purple-800',
         'orange' => 'text-orange-600', 'teal' => 'text-cyan-800', 'amber' => 'text-amber-600', 'red' => 'text-red-600'];
     $kpis = [
         ['Impresión mensual aprox.', '(12 meses)', $n($r['mensual_aprox']), 'Promedio mensual del bolsón', 'fa-chart-column', 'blue'],
@@ -20,14 +23,20 @@
         ['Bolsón B/N total', 'Contrato '.$r['contrato'], $n($r['bolson']), 'Páginas contratadas', 'fa-layer-group', 'purple'],
         ['Bolsón disponible', 'al '.$f($r['corte_al']), $n($r['disponible']), 'Páginas disponibles', 'fa-box-open', $r['porcentaje'] >= 90 ? 'red' : 'orange'],
         ['% consumo del bolsón', '', $r['porcentaje'].'%', 'Del total contratado', 'fa-chart-pie', 'teal'],
-        ['Producido '.($ultimo ? mb_strtolower($ultimo->fecha->locale('es')->translatedFormat('F')) : ''), $ultimo ? 'corte '.$f($ultimo->fecha) : '', $n($ultimo?->total), 'Páginas del último corte', 'fa-print', 'amber'],
+        ['Producido '.mb_strtolower($mes($sel?->fecha)), $sel ? 'corte '.$f($sel->fecha) : '', $n($sel?->total), $esUltimo ? 'Páginas del último corte' : 'Corte seleccionado', 'fa-print', 'amber'],
         ['En curso', $r['en_curso']->desde ? 'desde '.$f($r['en_curso']->desde) : '', $n($r['en_curso']->total), 'Desde el último corte', 'fa-hourglass-half', 'blue'],
     ];
     $seccion = 'bg-white rounded-xl shadow-hoja overflow-hidden';
     $cabecera = 'bg-marino text-white text-center px-4 py-2.5';
+    $pista = 'text-[11px] text-blue-200/80 font-normal normal-case';
 @endphp
 
 <div class="py-6 max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
+    {{-- Indicador de carga discreto --}}
+    <div wire:loading.delay class="fixed top-16 end-6 z-40 rounded-full bg-marino text-white text-xs px-3 py-1.5 shadow-lg">
+        <i class="fas fa-spinner fa-spin me-1"></i> Actualizando…
+    </div>
+
     {{-- Encabezado --}}
     <div class="rounded-xl bg-marino text-white px-6 py-5 flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-4">
@@ -56,6 +65,27 @@
         </div>
     </div>
 
+    {{-- Selección activa --}}
+    <div class="flex flex-wrap items-center gap-2 text-sm">
+        @if ($equipo || $periodo)
+            <span class="text-tinta-3">Viendo:</span>
+            @if ($selNombre)
+                <button type="button" wire:click="seleccionarEquipo" class="inline-flex items-center gap-2 h-7 ps-2 pe-2.5 rounded-full bg-white shadow-hoja hover:bg-papel">
+                    <span class="size-2.5 rounded-full" style="background: {{ $colorDe[$equipo] }}"></span>
+                    <b class="text-tinta">{{ $selNombre }}</b> <i class="fas fa-xmark text-tinta-3"></i>
+                </button>
+            @endif
+            @if ($periodo && $sel)
+                <button type="button" wire:click="seleccionarPeriodo" class="inline-flex items-center gap-2 h-7 px-2.5 rounded-full bg-white shadow-hoja hover:bg-papel">
+                    <i class="fas fa-calendar-check text-amber-500"></i> <b class="text-tinta">{{ $sel->etiqueta }}</b> <i class="fas fa-xmark text-tinta-3"></i>
+                </button>
+            @endif
+            <button type="button" wire:click="limpiar" class="text-xs font-medium text-marino-600 hover:underline">Quitar selección</button>
+        @else
+            <span class="text-xs text-tinta-3"><i class="fas fa-hand-pointer me-1"></i> Haz clic en una impresora (tabla, dona o leyenda) o en un mes de la tendencia para ver su detalle.</span>
+        @endif
+    </div>
+
     @if ($r['alertas'])
         <div class="rounded-xl bg-amber-50 ring-1 ring-inset ring-amber-300/60 px-5 py-3 text-amber-900">
             <div class="flex items-center gap-2 text-sm font-semibold"><i class="fas fa-triangle-exclamation"></i> Pendientes de revisar ({{ count($r['alertas']) }})</div>
@@ -80,29 +110,30 @@
         @endforeach
     </div>
 
-    {{-- Fila 2: por impresora · distribución · resumen (en pantallas medianas el resumen baja a lo ancho) --}}
+    {{-- Fila 2: por impresora · distribución · resumen --}}
     <div class="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-12 gap-5">
         <div class="2xl:col-span-5 {{ $seccion }}">
             <div class="{{ $cabecera }}">
                 <div class="font-bold uppercase text-sm">Consumo acumulado por impresora / ubicación</div>
-                <div class="text-xs text-blue-100">({{ $f($r['inicio']) }} – {{ $f($r['corte_al']) }})</div>
+                <div class="text-xs text-blue-100">({{ $f($r['inicio']) }} – {{ $f($r['corte_al']) }}) <span class="{{ $pista }}">· clic para ver detalle</span></div>
             </div>
             <table class="w-full text-sm">
-                <thead class="text-xs text-gray-600">
+                <thead class="text-xs text-tinta-3">
                     <tr><th class="px-4 py-2 text-left">Ubicación</th><th class="px-2 py-2 text-left">Serie</th><th class="px-2 py-2 text-left">Páginas acumuladas</th><th class="px-4 py-2 text-right">% del total</th></tr>
                 </thead>
                 <tbody>
-                    @foreach ($equipos as $i => $e)
-                        <tr>
+                    @foreach ($equipos as $e)
+                        <tr wire:key="acum-{{ $e->id }}" wire:click="seleccionarEquipo({{ $e->id }})"
+                            class="cursor-pointer transition-[opacity,background-color] duration-150 hover:bg-papel {{ $equipo === $e->id ? 'bg-marino-50' : '' }} {{ $atenuar($e->id) ? 'opacity-40' : '' }}">
                             <td class="px-4 py-1.5 font-semibold text-tinta whitespace-nowrap"><x-nivel :nivel="$e->nivel" class="me-1.5" />{{ $e->ubicacion }}</td>
-                            <td class="px-2 py-1.5 text-gray-600 text-xs">{{ $e->serie_contrato ?? $e->serie }}</td>
+                            <td class="px-2 py-1.5 text-tinta-3 text-xs">{{ $e->serie_contrato ?? $e->serie }}</td>
                             <td class="px-2 py-1.5 w-full">
                                 <div class="flex items-center gap-2">
-                                    <div class="h-4 rounded-sm bg-blue-700" style="width: {{ max(1, round($e->acumulado / $max * 75)) }}%"></div>
-                                    <span class="text-xs font-semibold text-gray-700">{{ $n($e->acumulado) }}</span>
+                                    <div class="h-4 rounded-sm" style="width: {{ max(1, round($e->acumulado / $max * 75)) }}%; background: {{ $equipo === $e->id ? $colorDe[$e->id] : '#1d4ed8' }}"></div>
+                                    <span class="text-xs font-semibold text-tinta-2">{{ $n($e->acumulado) }}</span>
                                 </div>
                             </td>
-                            <td class="px-4 py-1.5 text-right text-gray-700">{{ $e->porcentaje }}%</td>
+                            <td class="px-4 py-1.5 text-right text-tinta-2">{{ $e->porcentaje }}%</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -119,22 +150,36 @@
         <div class="2xl:col-span-4 {{ $seccion }}">
             <div class="{{ $cabecera }}">
                 <div class="font-bold uppercase text-sm">Distribución del consumo por ubicación</div>
-                <div class="text-xs text-blue-100">({{ $f($r['inicio']) }} – {{ $f($r['corte_al']) }})</div>
+                <div class="text-xs text-blue-100">({{ $f($r['inicio']) }} – {{ $f($r['corte_al']) }}) <span class="{{ $pista }}">· clic en una porción</span></div>
             </div>
             <div class="p-4 grid grid-cols-5 gap-2 items-center">
                 <div class="col-span-3">
-                    @include('livewire.partials.chart', ['alto' => 270, 'config' => [
-                        'type' => 'doughnut',
-                        'data' => ['labels' => $equipos->pluck('ubicacion'), 'datasets' => [['data' => $equipos->pluck('acumulado'), 'backgroundColor' => array_slice($colores, 0, $equipos->count()), 'borderColor' => '#fff', 'borderWidth' => 2]]],
-                        'options' => ['cutout' => '55%', 'plugins' => ['legend' => ['display' => false], 'centro' => ['valor' => $n($r['acumulado']), 'texto' => "PÁGINAS\nACUMULADAS"], 'etiquetas' => true]],
-                    ]])
+                    @php
+                        $selE = $equipo ? $equipos->firstWhere('id', $equipo) : null;
+                        $centro = $selE ? ['valor' => $selE->porcentaje.'%', 'texto' => mb_strtoupper($selE->ubicacion)."\n".$n($selE->acumulado).' PÁG.'] : ['valor' => $n($r['acumulado']), 'texto' => "PÁGINAS\nACUMULADAS"];
+                    @endphp
+                    @include('livewire.partials.chart', ['alto' => 270,
+                        'click' => ['accion' => 'seleccionarEquipo', 'valores' => $equipos->pluck('id')],
+                        'config' => [
+                            'type' => 'doughnut',
+                            'data' => ['labels' => $equipos->pluck('ubicacion'), 'datasets' => [[
+                                'data' => $equipos->pluck('acumulado'),
+                                'backgroundColor' => $equipos->map(fn ($e) => $colorDe[$e->id].($atenuar($e->id) ? '33' : '')),
+                                'offset' => $equipos->map(fn ($e) => $equipo === $e->id ? 14 : 0),
+                                'borderColor' => '#fff', 'borderWidth' => 2,
+                            ]]],
+                            'options' => ['cutout' => '55%', 'layout' => ['padding' => 8], 'plugins' => ['legend' => ['display' => false], 'centro' => $centro, 'etiquetas' => ! $equipo]],
+                        ]])
                 </div>
-                <ul class="col-span-2 space-y-2 text-xs">
-                    @foreach ($equipos as $i => $e)
-                        <li class="flex items-center gap-2">
-                            <span class="size-3 rounded-full shrink-0" style="background: {{ $colores[$i % count($colores)] }}"></span>
-                            <span class="font-semibold text-tinta whitespace-nowrap">{{ $e->ubicacion }}</span>
-                            <span class="ms-auto text-gray-500 whitespace-nowrap">{{ $n($e->acumulado) }} ({{ $e->porcentaje }}%)</span>
+                <ul class="col-span-2 space-y-1 text-xs">
+                    @foreach ($equipos as $e)
+                        <li wire:key="ley-{{ $e->id }}">
+                            <button type="button" wire:click="seleccionarEquipo({{ $e->id }})"
+                                    class="w-full flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-papel transition-opacity {{ $equipo === $e->id ? 'bg-marino-50' : '' }} {{ $atenuar($e->id) ? 'opacity-40' : '' }}">
+                                <span class="size-3 rounded-full shrink-0" style="background: {{ $colorDe[$e->id] }}"></span>
+                                <span class="font-semibold text-tinta whitespace-nowrap">{{ $e->ubicacion }}</span>
+                                <span class="ms-auto text-tinta-3 whitespace-nowrap cifra">{{ $n($e->acumulado) }} ({{ $e->porcentaje }}%)</span>
+                            </button>
                         </li>
                     @endforeach
                 </ul>
@@ -146,7 +191,7 @@
             <ul class="grid sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-1 gap-x-8 px-5 [&>li]:border-b [&>li]:border-linea">
                 @foreach ([
                     ['fa-file-contract', 'text-blue-700', '# de contrato', $r['contrato']],
-                    ['fa-calendar', 'text-gray-600', 'Vigencia', $r['inicio']?->format('d/m/y').' – '.$r['fin']?->format('d/m/y')],
+                    ['fa-calendar', 'text-tinta-3', 'Vigencia', $r['inicio']?->format('d/m/y').' – '.$r['fin']?->format('d/m/y')],
                     ['fa-layer-group', 'text-purple-700', 'Bolsón B/N total', $n($r['bolson'])],
                     ['fa-circle-check', 'text-green-700', 'Consumo acumulado', $n($r['acumulado'])],
                     ['fa-box-open', 'text-orange-500', 'Bolsón disponible', $n($r['disponible'])],
@@ -154,46 +199,116 @@
                 ] as [$icono, $color, $label, $valor])
                     <li class="flex items-center gap-3 py-2.5">
                         <i class="fas {{ $icono }} {{ $color }} text-xl w-7 text-center"></i>
-                        <span class="text-sm font-semibold text-gray-700">{{ $label }}</span>
-                        <span class="ms-auto text-lg font-bold text-[#0d2149] whitespace-nowrap">{{ $valor }}</span>
+                        <span class="text-sm font-semibold text-tinta-2">{{ $label }}</span>
+                        <span class="ms-auto text-lg font-bold text-marino whitespace-nowrap cifra">{{ $valor }}</span>
                     </li>
                 @endforeach
             </ul>
-            <div class="bg-blue-50 px-5 py-3 flex items-center gap-3">
+            <div class="bg-marino-50 px-5 py-3 flex items-center gap-3">
                 <i class="fas fa-chart-pie text-3xl text-cyan-700"></i>
-                <span class="text-sm font-semibold text-gray-700">% consumo del bolsón</span>
+                <span class="text-sm font-semibold text-tinta-2">% consumo del bolsón</span>
                 <span class="ms-auto cifra text-3xl font-bold tracking-tight text-marino-600">{{ $r['porcentaje'] }}%</span>
             </div>
             <x-medidor-bolson :r="$r" class="px-5 py-4" />
         </div>
     </div>
 
-    {{-- Fila 3: tendencia · producido último corte · hallazgos --}}
+    {{-- Ficha de la impresora seleccionada --}}
+    @if ($ficha)
+        @php $fe = $ficha['e']; $d = $ficha['dispositivo']; $color = $colorDe[$fe->id]; @endphp
+        <section wire:key="ficha-{{ $fe->id }}" class="bg-white rounded-xl shadow-hoja overflow-hidden ring-2" style="--tw-ring-color: {{ $color }}">
+            <header class="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-linea">
+                <span class="size-3 rounded-full" style="background: {{ $color }}"></span>
+                <x-nivel :nivel="$fe->nivel" />
+                <h2 class="text-lg font-semibold text-tinta">{{ $fe->ubicacion }}</h2>
+                <span class="text-sm text-tinta-3 cifra">{{ $fe->modelo }} · serie {{ $fe->serie }}
+                    @if ($d?->direccion_ip) · <a href="http://{{ $d->direccion_ip }}" target="_blank" rel="noopener" class="text-marino-600 hover:underline">{{ $d->direccion_ip }}</a> @endif
+                </span>
+                <button type="button" wire:click="seleccionarEquipo" class="ms-auto size-8 inline-flex items-center justify-center rounded-md text-tinta-3 hover:bg-papel" title="Cerrar"><i class="fas fa-xmark"></i></button>
+            </header>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 p-5">
+                <dl class="lg:col-span-4 grid grid-cols-2 gap-x-4 gap-y-3 content-start">
+                    @foreach ([
+                        ['Acumulado', $n($fe->acumulado), $fe->porcentaje.'% del total'],
+                        ['Promedio mensual', $n($ficha['promedio']), 'por corte'],
+                        ['Mejor mes', $n($ficha['mejor']['valor'] ?? null), $ficha['mejor']['etiqueta'] ?? ''],
+                        ['Mes más bajo', $n($ficha['menor']['valor'] ?? null), $ficha['menor']['etiqueta'] ?? ''],
+                        ['En curso', $n($fe->en_curso), 'desde el último corte'],
+                        ['Contador actual', $n($fe->contador_actual), 'impresiones + copias'],
+                    ] as [$k, $v, $nota])
+                        <div>
+                            <dt class="text-[11px] font-semibold uppercase tracking-wide text-tinta-3">{{ $k }}</dt>
+                            <dd class="cifra text-xl font-bold text-tinta leading-tight">{{ $v }}</dd>
+                            <dd class="text-[11px] text-tinta-3">{{ $nota }}</dd>
+                        </div>
+                    @endforeach
+                </dl>
+                <div class="lg:col-span-8">
+                    <div class="text-xs font-semibold text-tinta-2 mb-2">Producido en cada corte <span class="font-normal text-tinta-3">· clic en un mes para seleccionarlo</span></div>
+                    <div class="flex items-end gap-1.5 h-40">
+                        @foreach ($ficha['serie'] as $p)
+                            @php $esSel = $sel && $p['fecha']->equalTo($sel->fecha); @endphp
+                            <button type="button" wire:click="seleccionarPeriodo('{{ $p['fecha']->toDateString() }}')" title="{{ $p['etiqueta'] }}: {{ $n($p['valor']) }}"
+                                    class="group flex-1 h-full flex flex-col justify-end items-center gap-1 min-w-0">
+                                <span class="cifra text-[10px] font-semibold {{ $esSel ? 'text-tinta' : 'text-tinta-3' }}">{{ $p['valor'] === null ? 's/d' : number_format($p['valor'] / 1000, 1).'k' }}</span>
+                                <span class="w-full rounded-t transition-opacity group-hover:opacity-100 {{ $esSel ? '' : 'opacity-60' }} {{ $p['valor'] === null ? 'bg-red-200' : '' }}"
+                                      style="height: {{ $p['valor'] === null ? 6 : max(4, round($p['valor'] / $ficha['max'] * 100)) }}%; {{ $p['valor'] !== null ? 'background: '.$color : '' }}"></span>
+                                <span class="text-[10px] {{ $esSel ? 'font-bold text-tinta' : 'text-tinta-3' }}">{{ mb_substr(ucfirst($mes($p['fecha'])), 0, 3) }}</span>
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        </section>
+    @endif
+
+    {{-- Fila 3: tendencia · producido del corte seleccionado · hallazgos --}}
     <div class="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-12 gap-5">
         <div class="xl:col-span-2 2xl:col-span-6 {{ $seccion }}">
-            <div class="{{ $cabecera }} font-bold uppercase text-sm">Tendencia mensual de producción (páginas)</div>
-            <div class="p-4">
-                @include('livewire.partials.chart', ['alto' => 240, 'config' => [
-                    'type' => 'line',
-                    'data' => ['labels' => $periodos->map(fn ($p) => [mb_strtoupper($p->fecha->locale('es')->translatedFormat('F')), $p->fecha->format('Y')]), 'datasets' => [[
-                        'data' => $periodos->pluck('total'), 'borderColor' => '#1d4ed8', 'backgroundColor' => '#1d4ed8',
-                        'borderWidth' => 2.5, 'pointRadius' => 5, 'tension' => 0.25,
-                    ]]],
-                    'options' => ['layout' => ['padding' => ['top' => 20]], 'plugins' => ['legend' => ['display' => false], 'etiquetas' => true],
-                        'scales' => ['y' => ['beginAtZero' => true, 'grid' => ['color' => '#f1f5f9']], 'x' => ['grid' => ['display' => false], 'ticks' => ['font' => ['size' => 10]]]]],
-                ]])
+            <div class="{{ $cabecera }}">
+                <div class="font-bold uppercase text-sm">Tendencia mensual de producción (páginas){{ $selNombre ? ' · '.$selNombre : '' }}</div>
+                <div class="{{ $pista }}">Clic en un punto para ver ese corte</div>
             </div>
-            <div class="overflow-x-auto border-t border-gray-100">
+            <div class="p-4">
+                @php
+                    $etiquetasMes = $periodos->map(fn ($p) => [mb_strtoupper($mes($p->fecha)), $p->fecha->format('Y')]);
+                    $radios = $periodos->map(fn ($p) => $sel && $p->fecha->equalTo($sel->fecha) ? 8 : 4);
+                    $datasets = $ficha
+                        ? [
+                            ['label' => $selNombre, 'data' => $periodos->map(fn ($p) => $p->producido[$equipo] ?? null), 'borderColor' => $colorDe[$equipo], 'backgroundColor' => $colorDe[$equipo],
+                                'borderWidth' => 2.5, 'pointRadius' => $radios, 'tension' => 0.25, 'spanGaps' => true],
+                            ['label' => 'Total', 'data' => $periodos->pluck('total'), 'borderColor' => '#cbd5e1', 'backgroundColor' => '#cbd5e1', 'borderDash' => [5, 4],
+                                'borderWidth' => 1.5, 'pointRadius' => 2, 'tension' => 0.25, 'yAxisID' => 'y2', 'sinEtiquetas' => true],
+                        ]
+                        : [['label' => 'Total', 'data' => $periodos->pluck('total'), 'borderColor' => '#1d4ed8', 'backgroundColor' => '#1d4ed8', 'borderWidth' => 2.5, 'pointRadius' => $radios, 'tension' => 0.25]];
+                    $escalas = ['y' => ['beginAtZero' => true, 'grid' => ['color' => '#f1f5f9']], 'x' => ['grid' => ['display' => false], 'ticks' => ['font' => ['size' => 10]]]];
+                    if ($ficha) {
+                        $escalas['y2'] = ['position' => 'right', 'beginAtZero' => true, 'display' => false];   // el total punteado va en su propia escala; su valor se ve en el tooltip
+                    }
+                @endphp
+                @include('livewire.partials.chart', ['alto' => 240,
+                    'click' => ['accion' => 'seleccionarPeriodo', 'valores' => $periodos->map(fn ($p) => $p->fecha->toDateString())],
+                    'config' => [
+                        'type' => 'line',
+                        'data' => ['labels' => $etiquetasMes, 'datasets' => $datasets],
+                        'options' => ['layout' => ['padding' => ['top' => 20]], 'interaction' => ['mode' => 'index', 'intersect' => false],
+                            'plugins' => ['legend' => ['display' => (bool) $ficha, 'position' => 'bottom', 'labels' => ['boxWidth' => 12]], 'etiquetas' => true],
+                            'scales' => $escalas],
+                    ]])
+            </div>
+            <div class="overflow-x-auto border-t border-linea">
                 <table class="w-full text-xs text-center">
                     <tr>
-                        <th rowspan="2" class="bg-green-50 text-green-800 font-bold px-3 py-2 text-left whitespace-nowrap">SALDO DEL<br>BOLSÓN</th>
+                        <th rowspan="2" class="sticky start-0 z-10 bg-saldo-50 text-saldo font-bold px-3 py-2 text-left whitespace-nowrap shadow-[1px_0_0_rgba(15,23,42,.08)]">SALDO DEL<br>BOLSÓN</th>
                         @foreach ($periodos as $p)
-                            <td class="px-2 pt-2 text-gray-500 whitespace-nowrap {{ $loop->last ? 'bg-green-50 text-green-800 font-semibold' : '' }}">Saldo al<br>{{ $f($p->fecha) }}</td>
+                            @php $esSel = $sel && $p->fecha->equalTo($sel->fecha); @endphp
+                            <td wire:click="seleccionarPeriodo('{{ $p->fecha->toDateString() }}')" class="cursor-pointer px-2 pt-2 whitespace-nowrap hover:bg-papel {{ $esSel ? 'bg-saldo-50 text-saldo font-semibold' : 'text-tinta-3' }}">Saldo al<br>{{ $f($p->fecha) }}</td>
                         @endforeach
                     </tr>
                     <tr>
                         @foreach ($periodos as $p)
-                            <td class="px-2 pb-2 font-bold text-sm {{ $loop->last ? 'bg-green-50 text-green-700' : 'text-gray-800' }}">{{ $n($p->saldo) }}</td>
+                            @php $esSel = $sel && $p->fecha->equalTo($sel->fecha); @endphp
+                            <td wire:click="seleccionarPeriodo('{{ $p->fecha->toDateString() }}')" class="cursor-pointer cifra px-2 pb-2 font-bold text-sm hover:bg-papel {{ $esSel ? 'bg-saldo-50 text-saldo' : 'text-tinta' }}">{{ $n($p->saldo) }}</td>
                         @endforeach
                     </tr>
                 </table>
@@ -203,27 +318,33 @@
         <div class="2xl:col-span-3 {{ $seccion }}">
             <div class="{{ $cabecera }}">
                 <div class="font-bold uppercase text-sm">Producido por impresora</div>
-                <div class="text-xs text-blue-100">({{ $ultimo?->etiqueta }} · en curso desde {{ $f($r['en_curso']->desde) }})</div>
+                <div class="text-xs text-blue-100">({{ $sel?->etiqueta }}{{ $esUltimo ? ' · en curso desde '.$f($r['en_curso']->desde) : ' · corte del '.$f($sel?->fecha) }})</div>
             </div>
             <table class="w-full text-sm">
-                <thead class="text-xs text-gray-600 border-b border-gray-100">
-                    <tr><th class="px-4 py-2 text-left">Ubicación</th><th class="px-2 py-2 text-left">Serie</th><th class="px-2 py-2 text-right">{{ $ultimo ? ucfirst($ultimo->fecha->locale('es')->translatedFormat('F')) : 'Último' }}</th><th class="px-4 py-2 text-right">En curso</th></tr>
+                <thead class="text-xs text-tinta-3 border-b border-linea">
+                    <tr>
+                        <th class="px-4 py-2 text-left">Ubicación</th><th class="px-2 py-2 text-left">Serie</th>
+                        <th class="px-2 py-2 text-right">{{ ucfirst($mes($sel?->fecha)) }}</th>
+                        @if ($esUltimo) <th class="px-4 py-2 text-right">En curso</th> @endif
+                    </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
-                    @foreach ($r['por_equipo']->sortByDesc('ultimo_periodo')->values() as $e)
-                        <tr>
+                <tbody class="divide-y divide-linea">
+                    @foreach ($r['por_equipo']->sortByDesc(fn ($e) => $sel?->producido[$e->id] ?? -1)->values() as $e)
+                        @php $v = $sel?->producido[$e->id] ?? null; @endphp
+                        <tr wire:key="prod-{{ $e->id }}" wire:click="seleccionarEquipo({{ $e->id }})"
+                            class="cursor-pointer hover:bg-papel transition-opacity {{ $equipo === $e->id ? 'bg-marino-50' : '' }} {{ $atenuar($e->id) ? 'opacity-40' : '' }}">
                             <td class="px-4 py-1.5 font-medium whitespace-nowrap"><x-nivel :nivel="$e->nivel" class="me-1.5" />{{ $e->ubicacion }}</td>
-                            <td class="px-2 py-1.5 text-xs text-gray-600">{{ $e->serie }}</td>
-                            <td class="px-2 py-1.5 text-right {{ $e->ultimo_periodo === null ? 'text-red-500' : '' }}">{{ $e->ultimo_periodo === null ? 'pendiente' : $n($e->ultimo_periodo) }}</td>
-                            <td class="px-4 py-1.5 text-right text-gray-600">{{ $n($e->en_curso) }}</td>
+                            <td class="px-2 py-1.5 text-xs text-tinta-3">{{ $e->serie }}</td>
+                            <td class="px-2 py-1.5 text-right cifra {{ $v === null ? 'text-red-500' : '' }}">{{ $v === null ? 'pendiente' : $n($v) }}</td>
+                            @if ($esUltimo) <td class="px-4 py-1.5 text-right text-tinta-3 cifra">{{ $n($e->en_curso) }}</td> @endif
                         </tr>
                     @endforeach
                 </tbody>
                 <tfoot>
                     <tr class="bg-marino text-white font-bold">
                         <td class="px-4 py-2" colspan="2">TOTAL GENERAL</td>
-                        <td class="px-2 py-2 text-right">{{ $n($ultimo?->total) }}</td>
-                        <td class="px-4 py-2 text-right">{{ $n($r['en_curso']->total) }}</td>
+                        <td class="px-2 py-2 text-right cifra">{{ $n($sel?->total) }}</td>
+                        @if ($esUltimo) <td class="px-4 py-2 text-right cifra">{{ $n($r['en_curso']->total) }}</td> @endif
                     </tr>
                 </tfoot>
             </table>
@@ -237,7 +358,7 @@
                         <span class="shrink-0 inline-flex items-center justify-center size-11 rounded-full text-white {{ $iconos[$color] ?? 'bg-blue-600' }}"><i class="fas {{ $icono }}"></i></span>
                         <div>
                             <div class="font-bold text-sm {{ $titulos[$color] ?? 'text-blue-800' }}">{{ $titulo }}</div>
-                            <p class="text-xs text-gray-700 leading-snug">{{ $texto }}</p>
+                            <p class="text-xs text-tinta-2 leading-snug">{{ $texto }}</p>
                         </div>
                     </li>
                 @endforeach
