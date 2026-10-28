@@ -10,11 +10,12 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Reporte detallado de fin de mes (mes calendario): consumo por impresora y por día, papel y dúplex,
- * tóner, usuarios y unidades, registro de trabajos completo, trabajos por hora y ficha técnica al cierre.
- * Cada hoja es ['titulo', 'headings', 'rows'] para el Excel; el PDF y el correo usan las mismas hojas.
+ * Reporte de un período (día, semana o mes): resumen con comparación, consumo por impresora y por día,
+ * papel y dúplex, tóner, usuarios y unidades, trabajos por hora, registro de trabajos y estado de los equipos.
+ * Cada hoja es ['titulo', 'headings', 'rows']: el Excel lleva todas, el PDF todas menos el registro de trabajos,
+ * y el cuerpo del correo usa correo(). Lo usan los reportes diario, semanal y detallado de fin de mes.
  */
-class ReporteMensual
+class ReportePeriodo
 {
     public readonly Carbon $desde;
 
@@ -22,16 +23,151 @@ class ReporteMensual
 
     private Collection $dispositivos;
 
-    public function __construct(Carbon $mes)
+    public function __construct(Carbon $desde, Carbon $hasta, public readonly string $tipo = 'periodo')
     {
-        $this->desde = $mes->copy()->startOfMonth();
-        $this->hasta = $mes->copy()->endOfMonth();
+        $this->desde = $desde->copy()->startOfDay();
+        $this->hasta = $hasta->copy()->endOfDay();
         $this->dispositivos = Dispositivo::with('modelo')->orderBy('nivel')->get();
+    }
+
+    public static function dia(Carbon $dia): self
+    {
+        return new self($dia, $dia, 'diario');
+    }
+
+    /** Lunes a viernes de la semana del día dado (hasta ese día). */
+    public static function semana(Carbon $hasta): self
+    {
+        return new self($hasta->copy()->startOfWeek(), $hasta, 'semanal');
+    }
+
+    public static function mes(Carbon $mes): self
+    {
+        return new self($mes->copy()->startOfMonth(), $mes->copy()->endOfMonth(), 'detallado');
     }
 
     public function etiqueta(): string
     {
-        return ucfirst($this->desde->translatedFormat('F Y'));
+        return match ($this->tipo) {
+            'diario' => ucfirst($this->desde->translatedFormat('l d/m/Y')),
+            'detallado' => ucfirst($this->desde->translatedFormat('F Y')),
+            default => $this->desde->format('d/m/Y').' – '.$this->hasta->format('d/m/Y'),
+        };
+    }
+
+    public function titulo(): string
+    {
+        return match ($this->tipo) {
+            'diario' => 'Reporte diario · '.$this->desde->format('d/m/Y'),
+            'semanal' => 'Reporte semanal (lunes a viernes) · '.$this->etiqueta(),
+            'detallado' => 'Reporte detallado de '.$this->etiqueta(),
+            default => 'Reporte · '.$this->etiqueta(),
+        };
+    }
+
+    /** Período anterior equivalente: día hábil anterior, semana anterior o mes anterior. */
+    public function anterior(): self
+    {
+        return match ($this->tipo) {
+            'diario' => self::dia($this->desde->copy()->subWeekday()),
+            'detallado' => self::mes($this->desde->copy()->subMonthNoOverflow()),
+            default => new self($this->desde->copy()->subWeek(), $this->hasta->copy()->subWeek(), $this->tipo),
+        };
+    }
+
+    private function trabajos(): Builder
+    {
+        return Trabajo::filtrar(['desde' => $this->desde->toDateString(), 'hasta' => $this->hasta->toDateString()]);
+    }
+
+    /** Datos del cuerpo del correo: indicadores con comparación, tablas resumidas y estado de los equipos. */
+    public function correo(): array
+    {
+        $t = $this->totales();
+        $a = $this->anterior()->totales();
+        $var = fn ($k) => $a[$k] > 0 ? round(($t[$k] - $a[$k]) / $a[$k] * 100, 1) : null;
+        $c = new Consumo($this->filtroFechas());
+        $cuentas = new ConsumoCuentas($this->filtroFechas());
+        $r = (new Contrato)->resumen();
+        $hora = collect($this->porHora()['rows'])->sortByDesc(fn ($f) => array_sum(array_slice($f, 1, -1)))->first();
+
+        return [
+            'totales' => $t,
+            'anterior' => ['etiqueta' => $this->anterior()->etiqueta(), 'total' => $a['total'], 'costo_total' => $a['costo_total']],
+            'variacion' => ['total' => $var('total'), 'costo_total' => $var('costo_total')],
+            'impresoras' => $c->porDispositivo('total', 'DESC'),
+            'dias' => $this->desde->isSameDay($this->hasta) ? collect() : $c->porDia(),
+            'usuarios' => $cuentas->porUsuario()->take(10),
+            'unidades' => $cuentas->porUnidad(),
+            'hora_pico' => $hora[0] ?? null,
+            'bolson' => $r['bolson'] ? ['contrato' => $r['contrato'], 'acumulado' => $r['acumulado'], 'bolson' => $r['bolson'],
+                'porcentaje' => $r['porcentaje'], 'disponible' => $r['disponible'], 'agotamiento' => $r['agotamiento']] : null,
+            'toner' => $this->dispositivos->mapWithKeys(fn ($d) => [$d->id => $d->estado['toner']['pct'] ?? null]),
+            'atencion' => self::atencion($this->dispositivos),
+        ];
+    }
+
+    /**
+     * Lo que hay que atender hoy en los equipos: sin respuesta, tóner bajo y alertas activas.
+     *
+     * @return list<array{impresora:string,texto:string,accion:?string,grave:bool}>
+     */
+    public static function atencion(?Collection $dispositivos = null): array
+    {
+        $lista = [];
+        foreach ($dispositivos ?? Dispositivo::orderBy('nivel')->get() as $d) {
+            $e = $d->estado ?? [];
+            $t = $e['toner']['pct'] ?? null;
+            if (($e['estado'] ?? null) === 'sin_respuesta') {
+                $lista[] = ['impresora' => $d->ubicacion, 'texto' => 'No responde en la red', 'accion' => 'Revisar que esté encendida y conectada.', 'grave' => true];
+            }
+            if ($t !== null && $t < 25) {
+                $lista[] = ['impresora' => $d->ubicacion, 'texto' => "Tóner al {$t}%", 'grave' => $t < 10,
+                    'accion' => $t < 10 ? 'Cambiar el cartucho o solicitarlo al proveedor de inmediato.' : 'Solicitar un cartucho de reemplazo al proveedor.'];
+            }
+            foreach (AlertasImpresora::activas($e['alertas'] ?? []) as $a) {
+                if (in_array($a['codigo'], [1101, 1104], true) && $t !== null) {
+                    continue;   // el tóner ya se informa con su porcentaje
+                }
+                $lista[] = ['impresora' => $d->ubicacion, 'texto' => AlertasImpresora::texto($a), 'accion' => $a['accion'] ?? null, 'grave' => ($a['nivel'] ?? '') === 'critica'];
+            }
+        }
+
+        return $lista;
+    }
+
+    public function hojaAtencion(): array
+    {
+        return [
+            'titulo' => 'Atención de equipos',
+            'headings' => ['Impresora', 'Qué pasa', 'Qué hacer', 'Prioridad'],
+            'rows' => array_map(fn ($x) => [$x['impresora'], $x['texto'], $x['accion'] ?? '—', $x['grave'] ? 'Alta' : 'Normal'], self::atencion($this->dispositivos))
+                ?: [['Todos los equipos', 'Sin novedades', '—', '—']],
+        ];
+    }
+
+    /** Hoja de resumen: indicadores del período frente al anterior. */
+    public function resumen(): array
+    {
+        $t = $this->totales();
+        $ant = $this->anterior();
+        $a = $ant->totales();
+        $fila = fn ($k, $nombre, $q = false) => [$nombre, $q ? round($t[$k], 2) : (int) $t[$k], $q ? round($a[$k], 2) : (int) $a[$k],
+            $a[$k] > 0 ? round(($t[$k] - $a[$k]) / $a[$k] * 100, 1).'%' : '—'];
+
+        return [
+            'titulo' => 'Resumen',
+            'headings' => ['Indicador', $this->etiqueta(), 'Anterior: '.$ant->etiqueta(), 'Variación'],
+            'rows' => [
+                $fila('total', 'Páginas (impresiones + copias + fax)'),
+                $fila('impresiones', 'Impresiones'),
+                $fila('copias', 'Copias'),
+                $fila('escaneos', 'Escaneos (sin costo)'),
+                $fila('costo_total', 'Costo (Q)', true),
+                $fila('trabajos', 'Trabajos registrados'),
+                $fila('usuarios', 'Usuarios con consumo'),
+            ],
+        ];
     }
 
     private function filtroFechas(): array
@@ -42,22 +178,20 @@ class ReporteMensual
     /** @return list<array{titulo:string,headings:array,rows:array}> */
     public function hojas(bool $conTrabajos = true): array
     {
-        $hojas = [$this->impresoras(), $this->diario(), $this->papel(), $this->toner(), $this->usuarios(), $this->unidades(), $this->porHora()];
+        $hojas = [$this->resumen(), $this->hojaAtencion(), $this->impresoras(), $this->diario(), $this->papel(), $this->toner(), $this->usuarios(), $this->unidades(), $this->porHora()];
         if ($conTrabajos) {
-            $hojas[] = self::hojaTrabajos(Trabajo::filtrar(['desde' => $this->desde->toDateString(), 'hasta' => $this->hasta->toDateString()]));
+            $hojas[] = self::hojaTrabajos($this->trabajos());
         }
         $hojas[] = $this->ficha();
 
         return $hojas;
     }
 
-    /** Totales del mes para el cuerpo del correo. */
+    /** Totales del período. */
     public function totales(): array
     {
-        $t = (new Consumo($this->filtroFechas()))->totales();
-        $trabajos = Trabajo::filtrar(['desde' => $this->desde->toDateString(), 'hasta' => $this->hasta->toDateString()]);
-
-        return $t + ['trabajos' => $trabajos->count(),'usuarios' => (new ConsumoCuentas($this->filtroFechas()))->porUsuario()->count()];
+        return (new Consumo($this->filtroFechas()))->totales()
+            + ['trabajos' => $this->trabajos()->count(), 'usuarios' => (new ConsumoCuentas($this->filtroFechas()))->porUsuario()->count()];
     }
 
     public function impresoras(): array
@@ -172,7 +306,7 @@ class ReporteMensual
     public function porHora(): array
     {
         $tipos = array_keys(Trabajo::TIPOS);
-        $horas = Trabajo::filtrar(['desde' => $this->desde->toDateString(), 'hasta' => $this->hasta->toDateString()])
+        $horas = $this->trabajos()
             ->where('estado', 'completado')->get(['inicio', 'tipo', 'paginas'])
             ->groupBy(fn ($t) => (int) $t->inicio->format('G'));
 
@@ -202,14 +336,15 @@ class ReporteMensual
     public function ficha(): array
     {
         return [
-            'titulo' => 'Ficha técnica y estado',
+            'titulo' => 'Ficha técnica',
             'headings' => ['Impresora', 'IP', 'Modelo', 'Serie', 'MAC', 'Firmware', 'Instalada', 'Estado', 'Tóner', 'Alertas activas', 'Páginas una cara (vida)', 'Páginas doble cara (vida)', 'Actualizado'],
             'rows' => $this->dispositivos->map(function ($d) {
                 $e = $d->estado ?? [];
 
                 return [
                     $d->ubicacion, $d->direccion_ip, $d->modelo?->nombre, $d->serie, $e['mac'] ?? '—', $e['firmware'] ?? '—', $e['instalada'] ?? '—',
-                    $e['estado'] ?? 'sin datos', isset($e['toner']['pct']) ? $e['toner']['pct'].'%' : '—', count($e['alertas'] ?? []),
+                    ['disponible' => 'Disponible', 'imprimiendo' => 'Imprimiendo', 'calentando' => 'Calentando', 'sin_respuesta' => 'Sin respuesta'][$e['estado'] ?? ''] ?? 'Sin datos', isset($e['toner']['pct']) ? $e['toner']['pct'].'%' : '—',
+                    collect(AlertasImpresora::activas($e['alertas'] ?? []))->map(fn ($a) => AlertasImpresora::texto($a))->implode('; ') ?: 'Ninguna',
                     $e['simplex'] ?? '—', $e['duplex'] ?? '—', $d->estado_en?->format('d/m/Y H:i') ?? '—',
                 ];
             })->all(),

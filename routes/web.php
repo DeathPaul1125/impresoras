@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\VistaCorreoController;
 use App\Livewire\Actions\Logout;
 use App\Livewire\ConfiguracionPrecio;
 use App\Livewire\Cortes;
@@ -27,6 +28,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('trabajos', Trabajos::class)->name('trabajos');
         Route::get('cortes', Cortes::class)->name('cortes');
         Route::get('configuracion', ConfiguracionPrecio::class)->name('configuracion');
+        Route::get('correos/vista/{tipo}', [VistaCorreoController::class, 'ver'])->name('correos.vista');
+        Route::get('correos/vista/{tipo}/{formato}', [VistaCorreoController::class, 'adjunto'])->name('correos.adjunto');
     });
 
     Route::view('profile', 'profile')->name('profile');

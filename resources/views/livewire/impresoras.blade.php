@@ -84,6 +84,7 @@
                     $e = $d->estado ?? [];
                     $toner = $e['toner']['pct'] ?? null;
                     $punto = match ($e['estado'] ?? null) { 'disponible' => 'bg-saldo', 'imprimiendo' => 'bg-marino-600', 'sin_respuesta' => 'bg-red-500', null => 'bg-tinta-4', default => 'bg-amber-500' };
+                    $activas = \App\Support\AlertasImpresora::activas($e['alertas'] ?? []);
                     $textoEstado = match ($e['estado'] ?? null) { 'disponible' => 'Disponible', 'imprimiendo' => 'Imprimiendo', 'calentando' => 'Calentando', 'sin_respuesta' => 'Sin respuesta', null => 'Sin datos', default => 'Atención' };
                 @endphp
                 <tbody wire:key="imp-{{ $d->id }}" x-data="{ ficha: false }" class="border-b border-linea">
@@ -99,10 +100,12 @@
                                 <span class="size-2 rounded-full {{ $punto }}"></span>
                                 <span class="font-medium text-tinta">{{ $textoEstado }}</span>
                                 @if (! empty($e['mensaje']) && $e['mensaje'] !== 'Preparado.') <span class="text-tinta-3 truncate max-w-[140px]" title="{{ $e['mensaje'] }}">· {{ $e['mensaje'] }}</span> @endif
-                                @if (count($e['alertas'] ?? []))
-                                    <span class="ms-auto inline-flex items-center gap-1 text-amber-700" title="Alertas activas en la impresora"><i class="fas fa-triangle-exclamation"></i>{{ count($e['alertas']) }}</span>
-                                @endif
                             </div>
+                            @foreach ($activas as $a)
+                                <div class="mt-1 text-xs {{ ($a['nivel'] ?? '') === 'critica' ? 'text-red-700' : 'text-amber-700' }}" title="{{ $a['accion'] ?? '' }}">
+                                    <i class="fas fa-triangle-exclamation me-1"></i>{{ \App\Support\AlertasImpresora::texto($a) }}
+                                </div>
+                            @endforeach
                             @if ($toner !== null)
                                 <div class="mt-1.5 flex items-center gap-2" title="Tóner {{ $e['toner']['nombre'] ?? '' }}">
                                     <div class="h-1.5 flex-1 rounded-full bg-papel overflow-hidden">
@@ -196,16 +199,42 @@
                                         @endif
                                     </div>
                                     <div>
-                                        <div class="font-semibold text-tinta-2 mb-1.5">Suministros y alertas</div>
+                                        <div class="font-semibold text-tinta-2 mb-1.5">Suministros y bandejas</div>
                                         @foreach ($e['suministros'] ?? [] as $s)
                                             <div class="cifra text-tinta">{{ $s['nombre'] }}: {{ $s['pct'] !== null ? $s['pct'].'%' : ($s['nivel'] === -3 ? 'con existencia' : 'sin dato') }}</div>
                                         @endforeach
-                                        @if (count($e['alertas'] ?? []))
-                                            <div class="mt-1 text-amber-700">Alertas activas: {{ collect($e['alertas'])->map(fn ($a) => ($a['severidad'] === 'critica' ? 'crítica ' : '').'#'.$a['codigo'])->implode(', ') }}</div>
-                                        @endif
+                                        @foreach ($e['bandejas'] ?? [] as $b)
+                                            <div class="cifra {{ $b['nivel'] === 0 ? 'text-amber-700' : 'text-tinta' }}">
+                                                {{ $b['nombre'] === 'MP Tray' ? 'Bandeja multipropósito' : $b['nombre'] }}:
+                                                {{ $b['nivel'] === 0 ? 'sin papel' : ($b['pct'] !== null ? $b['pct'].'% ('.$b['nivel'].' de '.$b['max'].' hojas)' : ($b['nivel'] === -3 ? 'con papel' : 'sin dato')) }}
+                                            </div>
+                                        @endforeach
                                         <div class="mt-1 text-tinta-4">Actualizado {{ $d->estado_en?->diffForHumans() ?? '—' }}</div>
                                     </div>
                                 </div>
+                                @if (count($e['alertas'] ?? []))
+                                    <div class="mt-4 text-xs">
+                                        <div class="font-semibold text-tinta-2 mb-1.5">Alertas que reporta la impresora</div>
+                                        <ul class="space-y-1.5">
+                                            @foreach ($e['alertas'] as $a)
+                                                @php $nivelA = $a['nivel'] ?? (in_array($a['codigo'], \App\Support\AlertasImpresora::INFORMATIVAS, true) ? 'info' : 'advertencia'); @endphp
+                                                <li class="flex gap-2 {{ $nivelA === 'info' ? 'text-tinta-3' : '' }}">
+                                                    <i class="fas {{ $nivelA === 'critica' ? 'fa-circle-exclamation text-red-600' : ($nivelA === 'info' ? 'fa-circle-info' : 'fa-triangle-exclamation text-amber-600') }} mt-0.5"></i>
+                                                    <div>
+                                                        <span class="font-medium {{ $nivelA === 'info' ? '' : 'text-tinta' }}">{{ \App\Support\AlertasImpresora::texto($a) }}</span>
+                                                        @if ($nivelA === 'info') <span class="text-tinta-4">· aviso de rutina, no requiere acción</span> @endif
+                                                        @if (! empty($a['accion']) && $nivelA !== 'info') <div class="text-tinta-2">Qué hacer: {{ $a['accion'] }}</div> @endif
+                                                        <div class="text-tinta-4">
+                                                            Código {{ $a['codigo'] }}
+                                                            @if (! empty($a['quien'])) · lo resuelve: {{ mb_strtolower($a['quien']) }} @endif
+                                                            @if (! empty($a['desde'])) · detectada {{ \Illuminate\Support\Carbon::parse($a['desde'])->diffForHumans() }} @endif
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                @endif
                             @endif
                         </td>
                     </tr>

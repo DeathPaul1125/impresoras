@@ -6,6 +6,7 @@ use App\Mail\ReporteConsumo;
 use App\Models\Configuracion;
 use App\Models\ContadorEquipo;
 use App\Models\Dispositivo;
+use App\Support\ReportePeriodo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
@@ -38,13 +39,14 @@ class ReportesTest extends TestCase
         $this->artisan('impresoras:enviar-reporte diario')->assertSuccessful();
 
         Mail::assertSent(ReporteConsumo::class, function (ReporteConsumo $m) {
-            [$fila, $total] = $m->rows;
+            $fila = $m->datos['impresoras']->first();
 
             return $m->hasTo('a@senabed.gob.gt')
                 && str_contains($m->titulo, '29/10/2026')
-                && $fila === ['DAB 7o.', 'KMC1', '10.0.0.1', 30, 30, 5, 60, 'Q10.20']
-                && $total[7] === 'Q10.20'
-                && $m->dias === [];
+                && [$fila->ubicacion, $fila->impresiones, $fila->copias, $fila->escaneos, $fila->total] === ['DAB 7o.', 30, 30, 5, 60]
+                && round($m->datos['totales']['costo_total'], 2) === 10.2
+                && $m->datos['variacion']['total'] === -40.0   // 60 páginas vs. 100 del día anterior
+                && $m->datos['dias']->isEmpty();
         });
     }
 
@@ -55,8 +57,8 @@ class ReportesTest extends TestCase
         $this->artisan('impresoras:enviar-reporte semanal')->assertSuccessful();
 
         Mail::assertSent(ReporteConsumo::class, fn (ReporteConsumo $m) => str_contains($m->titulo, '26/10/2026 – 30/10/2026')
-            && array_slice($m->rows[0], 3, 4) === [90, 60, 15, 160]
-            && array_column($m->dias, 0) === ['28/10/2026', '29/10/2026']);
+            && [$m->datos['totales']['impresiones'], $m->datos['totales']['copias'], $m->datos['totales']['total']] === [90, 60, 160]
+            && $m->datos['dias']->pluck('fecha')->all() === ['2026-10-28', '2026-10-29']);
     }
 
     public function test_mensual_envia_el_reporte_de_corte(): void
@@ -88,10 +90,12 @@ class ReportesTest extends TestCase
     {
         config(['mail.default' => 'array']);
 
-        Mail::to('a@senabed.gob.gt')->send(new ReporteConsumo('Reporte diario', ['A', 'B'], [['x', 1], ['TOTAL', 1]], [['28/10/2026', 1]]));
+        Mail::to('a@senabed.gob.gt')->send(new ReporteConsumo(ReportePeriodo::dia(Carbon::parse('2026-10-28'))));
 
-        $adjuntos = app('mailer')->getSymfonyTransport()->messages()->first()->getOriginalMessage()->getAttachments();
-        $this->assertSame(['reporte-diario.xlsx', 'reporte-diario.pdf'], array_map(fn ($a) => $a->getFilename(), $adjuntos));
-        $this->assertStringStartsWith('%PDF', $adjuntos[1]->getBody());
+        $correo = app('mailer')->getSymfonyTransport()->messages()->first()->getOriginalMessage();
+        $adjuntos = $correo->getAttachments();
+        $this->assertSame(['reporte-diario-28102026.xlsx', 'reporte-diario-28102026.pdf'], array_map(fn ($a) => $a->getFilename(), array_values(array_filter($adjuntos, fn ($a) => $a->getFilename() !== 'logo-senabed-die.png'))));
+        $this->assertStringStartsWith('%PDF', end($adjuntos)->getBody());
+        $this->assertStringContainsString('Atención de equipos', $correo->getHtmlBody());
     }
 }

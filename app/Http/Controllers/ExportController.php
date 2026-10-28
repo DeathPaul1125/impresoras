@@ -8,7 +8,7 @@ use App\Models\Trabajo;
 use App\Support\Consumo;
 use App\Support\ConsumoCuentas;
 use App\Support\Contrato;
-use App\Support\ReporteMensual;
+use App\Support\ReportePeriodo;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -27,7 +27,7 @@ class ExportController extends Controller
         }
         if ($tipo === 'trabajos') {
             abort_unless(Gate::allows('admin'), 403);   // incluye nombres de documentos
-            $d = ReporteMensual::hojaTrabajos(Trabajo::filtrar($request->only(['desde', 'hasta', 'dispositivo', 'tipo', 'buscar'])));
+            $d = ReportePeriodo::hojaTrabajos(Trabajo::filtrar($request->only(['desde', 'hasta', 'dispositivo', 'tipo', 'buscar'])));
 
             return Excel::download(new ConsumoExport($d['headings'], $d['rows'], $d['titulo']), 'trabajos_'.now()->format('Ymd_His').'.xlsx');
         }

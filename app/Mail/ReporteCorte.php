@@ -22,11 +22,15 @@ class ReporteCorte extends Mailable
     /** Consumo por unidad del último período (de corte a corte). */
     public array $unidades = [];
 
+    /** Tóner bajo, alertas y equipos sin respuesta al momento del corte. */
+    public array $atencion = [];
+
     public function __construct()
     {
         $c = new Contrato;
         $this->r = $c->resumen();
         $this->hallazgos = $c->hallazgos($this->r);
+        $this->atencion = \App\Support\ReportePeriodo::atencion();
         if ($p = $this->r['periodos']->last()) {
             $this->unidades = (new \App\Support\ConsumoCuentas(['desde' => $p->desde, 'hasta' => $p->fecha]))->porUnidad()->all();
         }

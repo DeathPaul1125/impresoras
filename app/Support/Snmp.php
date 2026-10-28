@@ -115,13 +115,37 @@ class Snmp
             }
         }
 
-        // Alertas activas (prtAlertTable): severidad 3 = crítica, 4/5 = advertencia; código prtAlertCode.
-        $sev = self::columna($ip, '1.3.6.1.2.1.43.18.1.1.2.1');
-        $cod = self::columna($ip, '1.3.6.1.2.1.43.18.1.1.7.1');
-        $alertas = [];
-        foreach ($sev as $i => $s) {
-            $alertas[] = ['severidad' => (int) $s === 3 ? 'critica' : 'advertencia', 'codigo' => (int) ($cod[$i] ?? 0)];
+        // Bandejas de papel: nombre (MP Tray, Cassette 1...), nivel y capacidad (-3 = tiene papel, cantidad desconocida).
+        $bandejaNombre = self::columna($ip, '1.3.6.1.2.1.43.8.2.1.18.1');
+        $bandejaMax = self::columna($ip, '1.3.6.1.2.1.43.8.2.1.9.1');
+        $bandejaNivel = self::columna($ip, '1.3.6.1.2.1.43.8.2.1.10.1');
+        $bandejas = [];
+        foreach ($bandejaNombre as $i => $n) {
+            $m = (int) ($bandejaMax[$i] ?? 0);
+            $l = (int) ($bandejaNivel[$i] ?? -2);
+            $bandejas[] = ['nombre' => $n, 'nivel' => $l, 'max' => $m, 'pct' => $m > 0 && $l >= 0 ? round($l / $m * 100) : null];
         }
+
+        // Nombres por grupo.índice para decir a qué bandeja, salida o suministro se refiere cada alerta.
+        $partes = [];
+        foreach ([8 => $bandejaNombre, 9 => self::columna($ip, '1.3.6.1.2.1.43.9.2.1.12.1'), 11 => $nombres] as $g => $lista) {
+            foreach ($lista as $i => $n) {
+                $partes["{$g}.{$i}"] = $n;
+            }
+        }
+
+        // Alertas (prtAlertTable): severidad, quién la resuelve, grupo, índice y código. La hora de la alerta (col. 9)
+        // no sigue el sysUpTime en las Kyocera: cuándo apareció lo anota leer-estado.
+        $col = fn (int $c) => self::columna($ip, "1.3.6.1.2.1.43.18.1.1.{$c}.1");
+        [$sev, $nivelUsuario, $grupo, $indice, $cod] = [$col(2), $col(3), $col(4), $col(5), $col(7)];
+        $alertas = [];
+        foreach ($cod as $i => $c) {
+            $alertas[] = AlertasImpresora::describir([
+                'severidad' => (int) ($sev[$i] ?? 0), 'nivel_usuario' => (int) ($nivelUsuario[$i] ?? 0),
+                'grupo' => (int) ($grupo[$i] ?? 0), 'indice' => (int) ($indice[$i] ?? 0), 'codigo' => (int) $c,
+            ], $partes);
+        }
+        $alertas = collect($alertas)->unique('texto')->values()->all();   // el fusor repite la misma alerta por cada unidad
 
         $mac = self::get($ip, '1.3.6.1.2.1.2.2.1.6.1');   // 6 bytes crudos: no recortar
         $uptime = (int) self::valor($ip, '1.3.6.1.2.1.1.3.0');   // centésimas de segundo
@@ -132,6 +156,7 @@ class Snmp
             'toner' => $toner,
             'suministros' => $suministros,
             'alertas' => $alertas,
+            'bandejas' => $bandejas,
             'papel' => $papel,
             'simplex' => (int) self::valor($ip, '1.3.6.1.4.1.1347.42.2.5.1.1.1.1'),
             'duplex' => (int) self::valor($ip, '1.3.6.1.4.1.1347.42.2.5.1.1.2.1'),

@@ -23,5 +23,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // Rol admin: carga de CSV y configuración. Se usa como middleware 'can:admin'.
         Gate::define('admin', fn (User $user) => $user->isAdmin());
+
+        // PDFs: incrustar solo los caracteres usados de la fuente (~1.2 MB → ~100 KB por adjunto).
+        config(['dompdf.options.enable_font_subsetting' => true]);
     }
 }

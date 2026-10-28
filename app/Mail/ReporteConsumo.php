@@ -3,26 +3,33 @@
 namespace App\Mail;
 
 use App\Exports\ConsumoExport;
+use App\Support\ReportePeriodo;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Mail\Attachment;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Support\Str;
+use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Excel as ExcelTipo;
 use Maatwebsite\Excel\Facades\Excel;
 
+/**
+ * Reporte diario, semanal o detallado de fin de mes: resumen en el cuerpo, Excel con todas las hojas
+ * (incluido el registro de trabajos) y PDF con las mismas hojas salvo el registro de trabajos.
+ */
 class ReporteConsumo extends Mailable
 {
-    public function __construct(
-        public string $titulo,
-        public array $headings,
-        public array $rows,
-        public array $dias = [],   // [fecha, impresiones, copias, escaneos, total, costo] (semanal)
-        public ?string $bolson = null,   // estado del bolsón del contrato
-        public array $usuarios = [],     // top usuarios: [clave, usuario, unidad, impresiones, copias, escaneos, costo]
-        public array $unidades = [],     // por unidad: [unidad, usuarios, impresiones, copias, escaneos, costo, %]
-    ) {}
+    public string $titulo;
+
+    /** Datos del cuerpo del correo (ReportePeriodo::correo()). */
+    public array $datos;
+
+    public function __construct(public ReportePeriodo $reporte)
+    {
+        $this->titulo = $reporte->titulo();
+        $this->datos = $reporte->correo();
+    }
 
     public function envelope(): Envelope
     {
@@ -39,19 +46,29 @@ class ReporteConsumo extends Mailable
         $archivo = Str::slug($this->titulo);
 
         return [
-            Attachment::fromData(
-                fn () => Excel::raw(new ConsumoExport($this->headings, $this->rows, 'Consumo por impresora'), ExcelTipo::XLSX),
-                $archivo.'.xlsx',
-            )->withMime('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
-            Attachment::fromData(
-                fn () => Pdf::loadView('exports.pdf', [
-                    'titulo' => $this->titulo,
-                    'headings' => $this->headings,
-                    'rows' => $this->rows,
-                    'filtros' => 'Consumo por impresora (lecturas SNMP de las 6 pm)',
-                ])->setPaper('a4', 'landscape')->output(),
-                $archivo.'.pdf',
-            )->withMime('application/pdf'),
+            Attachment::fromData(fn () => Excel::raw(self::excel($this->reporte), ExcelTipo::XLSX), "{$archivo}.xlsx")
+                ->withMime('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+            Attachment::fromData(fn () => self::pdf($this->reporte)->output(), "{$archivo}.pdf")
+                ->withMime('application/pdf'),
         ];
+    }
+
+    public static function excel(ReportePeriodo $r): WithMultipleSheets
+    {
+        return new class($r->hojas()) implements WithMultipleSheets
+        {
+            public function __construct(private array $hojas) {}
+
+            public function sheets(): array
+            {
+                return array_map(fn ($h) => new ConsumoExport($h['headings'], $h['rows'], $h['titulo']), $this->hojas);
+            }
+        };
+    }
+
+    public static function pdf(ReportePeriodo $r): \Barryvdh\DomPDF\PDF
+    {
+        return Pdf::loadView('exports.reporte-periodo', ['titulo' => $r->titulo(), 'datos' => $r->correo(), 'hojas' => $r->hojas(conTrabajos: false)])
+            ->setPaper('a4', 'landscape');
     }
 }

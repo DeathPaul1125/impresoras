@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Configuracion;
 use App\Models\Dispositivo;
+use App\Support\ReportePeriodo;
 use App\Support\Snmp;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -32,6 +33,13 @@ class LeerEstado extends Command
                 continue;
             }
 
+            // Desde cuándo está cada alerta: se conserva la hora en que se vio por primera vez.
+            $antes = collect($d->estado['alertas'] ?? [])->mapWithKeys(fn ($a) => [($a['texto'] ?? $a['codigo']) => $a['desde'] ?? null]);
+            foreach ($nuevo['alertas'] as &$a) {
+                $a['desde'] = $antes[$a['texto']] ?? now()->toDateTimeString();
+            }
+            unset($a);
+
             $pct = $nuevo['toner']['pct'] ?? null;
             $avisado = $d->estado['aviso_toner'] ?? false;
             // Un solo aviso por cartucho: se rearma cuando el nivel vuelve a subir (cartucho nuevo).
@@ -44,6 +52,12 @@ class LeerEstado extends Command
         return self::SUCCESS;
     }
 
+    /** Lo demás que requiere atención (sin repetir la impresora del aviso). */
+    public static function otros(string $impresora): array
+    {
+        return array_values(array_filter(ReportePeriodo::atencion(), fn ($x) => $x['impresora'] !== $impresora));
+    }
+
     private function avisar(string $impresora, array $toner): bool
     {
         $correos = Configuracion::correosReportes();
@@ -52,7 +66,7 @@ class LeerEstado extends Command
         }
         try {
             Configuracion::aplicarSmtp();
-            Mail::raw("El tóner de la impresora {$impresora} está al {$toner['pct']}% ({$toner['nombre']}). Conviene solicitar el reemplazo al proveedor.",
+            Mail::send('emails.aviso-toner', ['impresora' => $impresora, 'toner' => $toner, 'atencion' => self::otros($impresora)],
                 fn ($m) => $m->to($correos)->subject("Impresoras SENABED · Tóner bajo en {$impresora} ({$toner['pct']}%)"));
 
             return true;

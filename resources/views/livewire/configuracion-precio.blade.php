@@ -75,8 +75,11 @@
                 <ul class="mt-3 space-y-1.5 text-xs text-tinta-2">
                     <li><i class="fas fa-sun w-4 text-tinta-4"></i> Diario · 6:15 pm</li>
                     <li><i class="fas fa-calendar-week w-4 text-tinta-4"></i> Viernes · 6:15 pm (lunes a viernes)</li>
-                    <li><i class="fas fa-scissors w-4 text-tinta-4"></i> Corte · día {{ $contrato_dia_corte }}, 00:10 (con Excel y PDF)</li>
+                    <li><i class="fas fa-scissors w-4 text-tinta-4"></i> Corte · día {{ $contrato_dia_corte }}, 00:10</li>
+                    <li><i class="fas fa-calendar-days w-4 text-tinta-4"></i> Detallado · último día del mes, 6:30 pm</li>
+                    <li><i class="fas fa-fill-drip w-4 text-tinta-4"></i> Tóner bajo · al bajar del 10%</li>
                 </ul>
+                <p class="mt-2 text-xs text-tinta-3">Todos los reportes llevan Excel y PDF adjuntos.</p>
             </div>
             <x-panel class="lg:col-span-2">
                 <x-campo label="Destinatarios" nombre="correos_reportes" ayuda="Separados por coma. Si queda vacío no se envía ningún reporte.">
@@ -84,6 +87,23 @@
                 </x-campo>
                 <div class="mt-5 flex justify-end">
                     <x-primary-button wire:click="guardarCorreos" type="button">Guardar destinatarios</x-primary-button>
+                </div>
+
+                <div class="mt-6 pt-5 border-t border-linea">
+                    <h3 class="text-sm font-semibold text-tinta">Vista previa</h3>
+                    <p class="text-xs text-tinta-3 mt-0.5">Cada correo y sus adjuntos con los datos de hoy, tal como llegarían. No se envía nada.</p>
+                    <ul class="mt-3 divide-y divide-linea text-sm">
+                        @foreach (['diario' => 'Reporte diario', 'semanal' => 'Reporte semanal', 'detallado' => 'Reporte detallado del mes', 'mensual' => 'Reporte del corte', 'toner' => 'Aviso de tóner bajo'] as $tipo => $nombre)
+                            <li class="flex flex-wrap items-center gap-2 py-2">
+                                <span class="me-auto text-tinta">{{ $nombre }}</span>
+                                <a href="{{ route('correos.vista', $tipo) }}" target="_blank" class="h-8 px-2.5 inline-flex items-center gap-1.5 text-xs font-medium rounded-md text-marino-600 hover:bg-marino-50 ring-1 ring-inset ring-marino-600/25"><i class="fas fa-envelope-open-text"></i> Ver correo</a>
+                                @if ($tipo !== 'toner')
+                                    <a href="{{ route('correos.adjunto', [$tipo, 'xlsx']) }}" class="h-8 px-2.5 inline-flex items-center gap-1.5 text-xs font-medium rounded-md text-saldo hover:bg-saldo-50 ring-1 ring-inset ring-saldo/25"><i class="fas fa-file-excel"></i> Excel</a>
+                                    <a href="{{ route('correos.adjunto', [$tipo, 'pdf']) }}" target="_blank" class="h-8 px-2.5 inline-flex items-center gap-1.5 text-xs font-medium rounded-md text-red-700 hover:bg-red-50 ring-1 ring-inset ring-red-700/20"><i class="fas fa-file-pdf"></i> PDF</a>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
                 </div>
             </x-panel>
         </div>

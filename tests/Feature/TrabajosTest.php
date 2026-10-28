@@ -4,13 +4,14 @@ namespace Tests\Feature;
 
 use App\Livewire\DashboardGeneral;
 use App\Livewire\Trabajos;
-use App\Mail\ReporteDetallado;
+use App\Mail\ReporteConsumo;
 use App\Models\Configuracion;
 use App\Models\ContadorEquipo;
 use App\Models\Dispositivo;
 use App\Models\Trabajo;
 use App\Models\User;
-use App\Support\ReporteMensual;
+use App\Support\AlertasImpresora;
+use App\Support\ReportePeriodo;
 use Database\Seeders\ConfiguracionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -76,7 +77,7 @@ class TrabajosTest extends TestCase
 
     public function test_reporte_mensual_calcula_papel_duplex_toner_y_horas(): void
     {
-        $r = new ReporteMensual(today());
+        $r = ReportePeriodo::mes(today());
         $this->assertSame('Octubre 2026', $r->etiqueta());
 
         $papel = $r->papel();
@@ -95,8 +96,22 @@ class TrabajosTest extends TestCase
 
         $this->artisan('impresoras:enviar-reporte detallado')->assertSuccessful();
 
-        Mail::assertSent(ReporteDetallado::class, fn (ReporteDetallado $m) => $m->hasTo('a@senabed.gob.gt')
-            && $m->mes === 'Octubre 2026' && count($m->attachments()) === 2 && $m->totales['trabajos'] === 2);
+        Mail::assertSent(ReporteConsumo::class, fn (ReporteConsumo $m) => $m->hasTo('a@senabed.gob.gt')
+            && $m->titulo === 'Reporte detallado de Octubre 2026' && count($m->attachments()) === 2 && $m->datos['totales']['trabajos'] === 2);
+    }
+
+    public function test_alertas_se_describen_en_espanol(): void
+    {
+        $a = AlertasImpresora::describir(['severidad' => 5, 'nivel_usuario' => 3, 'grupo' => 8, 'indice' => 2, 'codigo' => 808], ['8.2' => 'Cassette 1']);
+        $this->assertSame(['codigo' => 808, 'nivel' => 'advertencia', 'texto' => 'Cassette 1: sin papel', 'accion' => 'Cargar papel en la bandeja.', 'quien' => 'Cualquier usuario'], $a);
+
+        $this->assertSame('info', AlertasImpresora::describir(['severidad' => 4, 'nivel_usuario' => 6, 'grupo' => 5, 'indice' => 1, 'codigo' => 503])['nivel']);
+        $this->assertSame('critica', AlertasImpresora::describir(['severidad' => 3, 'nivel_usuario' => 3, 'grupo' => 13, 'indice' => 1, 'codigo' => 8])['nivel']);
+        $this->assertSame('Recorrido del papel: atasco de papel', AlertasImpresora::describir(['severidad' => 3, 'nivel_usuario' => 3, 'grupo' => 13, 'indice' => 1, 'codigo' => 8])['texto']);
+
+        // Formato anterior (solo código) y filtro de las de rutina.
+        $this->assertSame('Sin papel', AlertasImpresora::texto(['codigo' => 808]));
+        $this->assertCount(1, AlertasImpresora::activas([['codigo' => 503], ['codigo' => 808], ['codigo' => 1001, 'nivel' => 'info']]));
     }
 
     public function test_dashboard_muestra_estado_de_equipos(): void

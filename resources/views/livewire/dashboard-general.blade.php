@@ -105,15 +105,18 @@
                 @php
                     $e = $eq->estado;
                     $t = $e['toner']['pct'] ?? null;
-                    $ok = ($e['estado'] ?? null) === 'disponible' || ($e['estado'] ?? null) === 'imprimiendo';
+                    $activas = \App\Support\AlertasImpresora::activas($e['alertas'] ?? []);
+                    $ok = in_array($e['estado'] ?? null, ['disponible', 'imprimiendo'], true) && ! $activas;
                 @endphp
                 <div class="bg-white rounded-lg shadow-hoja px-3 py-2 {{ $ok ? '' : 'ring-1 ring-inset ring-amber-300' }}"
                      title="{{ $e['mensaje'] ?? '' }} · actualizado {{ $eq->estado_en?->diffForHumans() }}">
                     <div class="flex items-center gap-1.5 text-xs">
                         <span class="size-2 rounded-full {{ ($e['estado'] ?? null) === 'sin_respuesta' ? 'bg-red-500' : ($ok ? 'bg-saldo' : 'bg-amber-500') }}"></span>
                         <span class="font-semibold text-tinta truncate">{{ $eq->ubicacion }}</span>
-                        @if (count($e['alertas'] ?? [])) <i class="fas fa-triangle-exclamation ms-auto text-amber-600" title="{{ count($e['alertas']) }} alerta(s) activa(s)"></i> @endif
                     </div>
+                    @foreach ($activas as $a)
+                        <div class="mt-1 text-[11px] leading-tight {{ ($a['nivel'] ?? '') === 'critica' ? 'text-red-700' : 'text-amber-700' }}" title="{{ $a['accion'] ?? '' }}">{{ \App\Support\AlertasImpresora::texto($a) }}</div>
+                    @endforeach
                     @if ($t !== null)
                         <div class="mt-1.5 flex items-center gap-1.5">
                             <div class="h-1.5 flex-1 rounded-full bg-papel overflow-hidden">
