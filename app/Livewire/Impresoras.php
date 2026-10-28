@@ -106,9 +106,9 @@ class Impresoras extends Component
 
     public function eliminar(int $id): void
     {
-        $d = Dispositivo::withCount('lecturas')->findOrFail($id);
-        if ($d->lecturas_count > 0) {
-            session()->flash('error', "No se puede eliminar {$d->nombre_host}: tiene {$d->lecturas_count} lecturas registradas.");
+        $d = Dispositivo::withCount('contadores')->findOrFail($id);
+        if ($d->contadores_count > 0) {
+            session()->flash('error', "No se puede eliminar {$d->nombre_host}: tiene {$d->contadores_count} lecturas diarias en el histórico.");
 
             return;
         }
@@ -120,7 +120,7 @@ class Impresoras extends Component
     public function render()
     {
         return view('livewire.impresoras', [
-            'impresoras' => Dispositivo::with('modelo')->withCount('lecturas')->orderBy('ubicacion')->get(),
+            'impresoras' => Dispositivo::with('modelo')->withCount('contadores')->withMax('contadores', 'leido_en')->orderBy('ubicacion')->get(),
             'modelos' => Modelo::orderBy('nombre')->pluck('nombre'),
         ]);
     }

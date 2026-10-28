@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Livewire\Concerns\ConFiltros;
 use App\Support\Consumo;
+use Illuminate\Support\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -48,27 +49,27 @@ class Tablero extends Component
     {
         $consumo = new Consumo($this->filtros());
 
-        $usuarios = $consumo->porUsuario($this->sort_field, $this->sort_order);
-        $unidades = $consumo->porUnidad();
-        $dispositivos = $consumo->porDispositivo();
+        $porDia = $consumo->porDia();
+        $matriz = $consumo->porDiaDispositivo();
         $tendencias = $consumo->tendenciaMensual();
+        $columnas = $consumo->dispositivos();   // orden fijo por ubicación para la tabla día × impresora
 
         return view('livewire.tablero', [
             'totales' => $consumo->totales(),
-            'usuarios' => $usuarios,
-            'unidades' => $unidades,
-            'dispositivos' => $dispositivos,
+            'impresoras' => $consumo->porDispositivo($this->sort_field, $this->sort_order),
+            'porDia' => $porDia,
+            'matriz' => $matriz,
+            'columnas' => $columnas,
             'tendencias' => $tendencias,
             'opciones' => $this->opcionesFiltros(),
             'firma' => md5(json_encode($this->filtros()).$this->sort_field.$this->sort_order),
             'graficas' => [
-                'usuarios' => [
-                    'labels' => $usuarios->take(10)->pluck('nombre_cuenta'),
-                    'data' => $usuarios->take(10)->pluck('costo_total')->map(fn ($v) => round($v, 2)),
-                ],
-                'unidades' => [
-                    'labels' => $unidades->pluck('unidad')->map(fn ($v) => $v ?: 'S/U'),
-                    'data' => $unidades->pluck('costo_total')->map(fn ($v) => round($v, 2)),
+                'dias' => [
+                    'labels' => $porDia->map(fn ($d) => Carbon::parse($d->fecha)->format('d/m')),
+                    'series' => $columnas->map(fn ($d) => [
+                        'label' => $d->ubicacion ?? $d->nombre_host,
+                        'data' => $porDia->map(fn ($dia) => $matriz[$dia->fecha][$d->id]->total ?? 0),
+                    ])->values(),
                 ],
                 'tendencias' => [
                     'labels' => $tendencias->pluck('periodo'),

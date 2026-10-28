@@ -10,7 +10,7 @@ class Dispositivo extends Model
 {
     protected $table = 'dispositivos';
 
-    protected $fillable = ['ubicacion', 'nombre_host', 'direccion_ip', 'modelo_id', 'serie'];
+    protected $fillable = ['ubicacion', 'nivel', 'nombre_host', 'direccion_ip', 'modelo_id', 'serie'];
 
     public function modelo(): BelongsTo
     {
@@ -20,5 +20,16 @@ class Dispositivo extends Model
     public function lecturas(): HasMany
     {
         return $this->hasMany(Lectura::class);
+    }
+
+    public function cortes(): HasMany
+    {
+        return $this->hasMany(Corte::class);
+    }
+
+    /** Histórico de lecturas SNMP diarias. */
+    public function contadores(): HasMany
+    {
+        return $this->hasMany(ContadorEquipo::class);
     }
 }

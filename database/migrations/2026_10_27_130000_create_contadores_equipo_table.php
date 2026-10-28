@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedInteger('impresiones')->nullable();
             $table->unsignedInteger('copias')->nullable();
             $table->unsignedInteger('escaneos')->nullable();
-            $table->dateTime('leido_en');   // hora local de Guatemala
+            $table->dateTime('leido_en');
 
             $table->index(['dispositivo_id', 'leido_en']);
         });

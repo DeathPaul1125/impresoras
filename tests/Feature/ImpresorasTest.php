@@ -3,9 +3,8 @@
 namespace Tests\Feature;
 
 use App\Livewire\Impresoras;
-use App\Models\Cuenta;
+use App\Models\ContadorEquipo;
 use App\Models\Dispositivo;
-use App\Models\Lectura;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -56,14 +55,13 @@ class ImpresorasTest extends TestCase
         $this->assertSame(1, Dispositivo::count());
     }
 
-    public function test_no_elimina_si_tiene_lecturas(): void
+    public function test_no_elimina_si_tiene_historico(): void
     {
         $this->actingAs($this->admin());
 
         $con = Dispositivo::create(['ubicacion' => 'Lobby', 'nombre_host' => 'KMC1', 'direccion_ip' => '10.0.0.1']);
         $sin = Dispositivo::create(['ubicacion' => 'Prueba', 'nombre_host' => 'KMC2', 'direccion_ip' => '10.0.0.2']);
-        $cuenta = Cuenta::create(['id_cuenta' => '1', 'nombre_cuenta' => 'X']);
-        Lectura::create(['cuenta_id' => $cuenta->id, 'dispositivo_id' => $con->id, 'fecha_corte' => now()]);
+        ContadorEquipo::create(['dispositivo_id' => $con->id, 'total' => 10, 'leido_en' => now()]);
 
         Livewire::test(Impresoras::class)
             ->call('eliminar', $con->id)

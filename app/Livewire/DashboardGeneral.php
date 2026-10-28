@@ -2,51 +2,27 @@
 
 namespace App\Livewire;
 
-use App\Livewire\Concerns\ConFiltros;
-use App\Support\Consumo;
+use App\Support\Contrato;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
+/** Dashboard del contrato: consumo acumulado contra el bolsón B/N, por corte y por impresora. */
 #[Layout('layouts.app')]
-#[Title('Dashboard General')]
+#[Title('Dashboard')]
 class DashboardGeneral extends Component
 {
-    use ConFiltros;
-
-    public function mount(): void
-    {
-        $this->inicializarFiltros();
-    }
-
-    public function filtrar(): void
-    {
-        // wire:model deferido; el submit fuerza el re-render.
-    }
+    public const COLORES = ['#1d4ed8', '#f97316', '#15803d', '#7e22ce', '#f59e0b', '#0891b2', '#1e3a8a', '#db2777', '#65a30d'];
 
     public function render()
     {
-        $consumo = new Consumo($this->filtros());
-
-        $topUsuarios = $consumo->porUsuario('costo_total', 'DESC', 10);
-        $unidades = $consumo->porUnidad();
+        $contrato = new Contrato;
+        $r = $contrato->resumen();
 
         return view('livewire.dashboard-general', [
-            'totales' => $consumo->totales(),
-            'topUsuarios' => $topUsuarios,
-            'unidades' => $unidades,
-            'opciones' => $this->opcionesFiltros(),
-            'firma' => md5(json_encode($this->filtros())),
-            'graficas' => [
-                'usuarios' => [
-                    'labels' => $topUsuarios->pluck('nombre_cuenta'),
-                    'data' => $topUsuarios->pluck('costo_total')->map(fn ($v) => round($v, 2)),
-                ],
-                'unidades' => [
-                    'labels' => $unidades->pluck('unidad')->map(fn ($v) => $v ?: 'S/U'),
-                    'data' => $unidades->pluck('costo_total')->map(fn ($v) => round($v, 2)),
-                ],
-            ],
+            'r' => $r,
+            'hallazgos' => $contrato->hallazgos($r),
+            'colores' => self::COLORES,
         ]);
     }
 }

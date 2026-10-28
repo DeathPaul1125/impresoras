@@ -27,13 +27,12 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 @php
                     $items = [
-                        ['Dashboard General', 'Estadísticas generales de consumo.', route('dashboard')],
-                        ['Tablero de Totales', 'Informes de totales y resúmenes por período.', route('tablero')],
-                        ['Verificación de Carga', 'Revisa el estado de las importaciones.', route('verificacion')],
+                        ['Dashboard General', 'Consumo diario por impresora.', route('dashboard')],
+                        ['Tablero de Totales', 'Totales por impresora, por día y por mes.', route('tablero')],
                     ];
                     if (auth()->user()->isAdmin()) {
-                        $items[] = ['Carga de Contadores', 'Sube archivos CSV de contadores.', route('carga')];
-                        $items[] = ['Configuración', 'Ajusta el precio unitario.', route('configuracion')];
+                        $items[] = ['Impresoras', 'Registra impresoras y lee sus contadores.', route('impresoras')];
+                        $items[] = ['Configuración', 'Precio unitario y correos de reportes.', route('configuracion')];
                     }
                 @endphp
                 @foreach ($items as [$titulo, $desc, $url])

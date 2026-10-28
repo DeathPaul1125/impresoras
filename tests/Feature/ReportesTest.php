@@ -15,8 +15,11 @@ class ReportesTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function lecturas(): void
+    protected function setUp(): void
     {
+        parent::setUp();
+        Configuracion::setCorreosReportes(['a@senabed.gob.gt']);
+
         $d = Dispositivo::create(['ubicacion' => 'DAB 7o.', 'nombre_host' => 'KMC1', 'direccion_ip' => '10.0.0.1']);
         foreach ([
             ['2026-10-27 18:00:03', 100, 60, 40, 10],
@@ -27,12 +30,10 @@ class ReportesTest extends TestCase
         }
     }
 
-    public function test_diario_envia_diferencia_del_ultimo_dia(): void
+    public function test_diario_envia_la_diferencia_con_el_dia_anterior(): void
     {
         Mail::fake();
-        $this->lecturas();
-        Configuracion::setCorreosReportes(['a@senabed.gob.gt']);
-        $this->travelTo(Carbon::parse('2026-10-30 00:05:00', 'UTC'));   // 29/10 18:05 Guatemala
+        $this->travelTo(Carbon::parse('2026-10-29 18:05:00'));
 
         $this->artisan('impresoras:enviar-reporte diario')->assertSuccessful();
 
@@ -40,28 +41,33 @@ class ReportesTest extends TestCase
             [$fila, $total] = $m->rows;
 
             return $m->hasTo('a@senabed.gob.gt')
-                && $fila[3] === '28/10/2026 18:00' && $fila[4] === '29/10/2026 18:00'
-                && array_slice($fila, 5) === [30, 30, 5, 60, 'Q10.20']
-                && $total[9] === 'Q10.20';
+                && str_contains($m->titulo, '29/10/2026')
+                && $fila === ['DAB 7o.', 'KMC1', '10.0.0.1', 30, 30, 5, 60, 'Q10.20']
+                && $total[7] === 'Q10.20'
+                && $m->dias === [];
         });
     }
 
-    public function test_mensual_sin_lectura_previa_usa_la_primera_del_periodo(): void
+    public function test_semanal_y_mensual_incluyen_detalle_por_dia(): void
     {
         Mail::fake();
-        $this->lecturas();
-        Configuracion::setCorreosReportes(['a@senabed.gob.gt']);
-        $this->travelTo(Carbon::parse('2026-11-01 00:05:00', 'UTC'));   // 31/10 18:05 Guatemala
+        $this->travelTo(Carbon::parse('2026-10-30 18:05:00'));   // viernes
+        $this->artisan('impresoras:enviar-reporte semanal')->assertSuccessful();
 
+        $this->travelTo(Carbon::parse('2026-10-31 18:05:00'));   // último día del mes
         $this->artisan('impresoras:enviar-reporte mensual')->assertSuccessful();
 
-        Mail::assertSent(ReporteConsumo::class, fn (ReporteConsumo $m) => $m->rows[0][3] === '27/10/2026 18:00'
-            && array_slice($m->rows[0], 5, 4) === [90, 60, 15, 160]);
+        foreach (['26/10/2026 – 30/10/2026', '01/10/2026 – 31/10/2026'] as $rango) {
+            Mail::assertSent(ReporteConsumo::class, fn (ReporteConsumo $m) => str_contains($m->titulo, $rango)
+                && array_slice($m->rows[0], 3, 4) === [90, 60, 15, 160]
+                && array_column($m->dias, 0) === ['28/10/2026', '29/10/2026']);
+        }
     }
 
     public function test_sin_correos_no_envia(): void
     {
         Mail::fake();
+        Configuracion::setCorreosReportes([]);
 
         $this->artisan('impresoras:enviar-reporte semanal')->assertFailed();
 
@@ -72,7 +78,7 @@ class ReportesTest extends TestCase
     {
         config(['mail.default' => 'array']);
 
-        Mail::to('a@senabed.gob.gt')->send(new ReporteConsumo('Reporte diario', ['A', 'B'], [['x', 1], ['TOTAL', 1]]));
+        Mail::to('a@senabed.gob.gt')->send(new ReporteConsumo('Reporte diario', ['A', 'B'], [['x', 1], ['TOTAL', 1]], [['28/10/2026', 1]]));
 
         $adjuntos = app('mailer')->getSymfonyTransport()->messages()->first()->getOriginalMessage()->getAttachments();
         $this->assertSame(['reporte-diario.xlsx', 'reporte-diario.pdf'], array_map(fn ($a) => $a->getFilename(), $adjuntos));

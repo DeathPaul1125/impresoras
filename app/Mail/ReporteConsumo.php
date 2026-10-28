@@ -18,6 +18,7 @@ class ReporteConsumo extends Mailable
         public string $titulo,
         public array $headings,
         public array $rows,
+        public array $dias = [],   // [fecha, impresiones, copias, escaneos, total, costo] (semanal/mensual)
     ) {}
 
     public function envelope(): Envelope

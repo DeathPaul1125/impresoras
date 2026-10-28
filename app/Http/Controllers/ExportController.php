@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ExportController extends Controller
 {
-    private const TIPOS = ['usuarios', 'unidades', 'dispositivos', 'tendencias'];
+    private const TIPOS = ['dispositivos', 'diario', 'tendencias'];
 
     public function excel(Request $request, string $tipo): Response
     {
@@ -42,9 +42,7 @@ class ExportController extends Controller
 
     private function filtros(Request $request): array
     {
-        return $request->only([
-            'fecha_inicio', 'fecha_fin', 'unidad', 'dispositivo', 'modelo', 'nombre_cuenta',
-        ]);
+        return $request->only(['fecha_inicio', 'fecha_fin', 'dispositivo', 'modelo']);
     }
 
     private function filtrosLegibles(Request $request): string
@@ -62,46 +60,46 @@ class ExportController extends Controller
         $n = fn ($v) => (int) $v;
 
         return match ($tipo) {
-            'usuarios' => [
-                'titulo' => 'Usuarios por Consumo',
-                'headings' => ['ID Cuenta', 'Nombre Cuenta', 'Unidad', 'Impresiones', 'Copias', 'Escaneados', 'Costo Total', 'Último Corte'],
-                'rows' => $consumo->porUsuario(
+            'dispositivos' => [
+                'titulo' => 'Consumo por Impresora',
+                'headings' => ['Ubicación', 'Nombre Host', 'Dirección IP', 'Modelo', 'Impresiones', 'Copias', 'Escaneos', 'Total Páginas', 'Costo Total', 'Porcentaje'],
+                'rows' => $consumo->porDispositivo(
                     $request->get('sort_field', 'costo_total'),
                     $request->get('sort_order', 'DESC'),
                 )->map(fn ($r) => [
-                    $r->id_cuenta, $r->nombre_cuenta, $r->unidad,
-                    $n($r->impresiones), $n($r->copias), $n($r->escaneados),
-                    $q($r->costo_total),
-                    $r->ultimo_corte ? Carbon::parse($r->ultimo_corte)->format('d/m/Y H:i') : '',
-                ])->all(),
-            ],
-            'unidades' => [
-                'titulo' => 'Unidades por Consumo',
-                'headings' => ['Unidad', 'Nombre Unidad', 'Impresiones', 'Copias', 'Escaneados', 'Costo Total', 'Porcentaje'],
-                'rows' => $consumo->porUnidad()->map(fn ($r) => [
-                    $r->unidad, $r->unidad_nombre,
-                    $n($r->impresiones), $n($r->copias), $n($r->escaneados),
+                    $r->ubicacion, $r->nombre_host, $r->direccion_ip, $r->modelo,
+                    $n($r->impresiones), $n($r->copias), $n($r->escaneos), $n($r->total),
                     $q($r->costo_total), $r->porcentaje.'%',
                 ])->all(),
             ],
-            'dispositivos' => [
-                'titulo' => 'Dispositivos por Consumo',
-                'headings' => ['Nombre Host', 'Dirección IP', 'Modelo', 'Impresiones', 'Copias', 'Escaneados', 'Costo Total'],
-                'rows' => $consumo->porDispositivo()->map(fn ($r) => [
-                    $r->nombre_host, $r->direccion_ip, $r->modelo,
-                    $n($r->impresiones), $n($r->copias), $n($r->escaneados),
-                    $q($r->costo_total),
-                ])->all(),
-            ],
+            'diario' => $this->diario($consumo, $q),
             'tendencias' => [
                 'titulo' => 'Tendencias de Consumo Mensual',
-                'headings' => ['Período', 'Usuarios Activos', 'Promedio por Usuario', 'Costo Total', 'Variación %'],
+                'headings' => ['Período', 'Días', 'Impresiones', 'Copias', 'Escaneos', 'Costo Total', 'Variación %'],
                 'rows' => $consumo->tendenciaMensual()->map(fn ($r) => [
-                    $r->periodo, $n($r->usuarios), $n($r->promedio_usuario),
+                    $r->periodo, $r->dias, $n($r->impresiones), $n($r->copias), $n($r->escaneos),
                     $q($r->costo_total),
                     $r->variacion === null ? '—' : $r->variacion.'%',
                 ])->all(),
             ],
         };
+    }
+
+    /** Páginas por día × impresora, más total y costo del día. */
+    private function diario(Consumo $consumo, \Closure $q): array
+    {
+        $columnas = $consumo->dispositivos();
+        $matriz = $consumo->porDiaDispositivo();
+
+        return [
+            'titulo' => 'Consumo Diario (páginas)',
+            'headings' => ['Fecha', ...$columnas->map(fn ($d) => $d->ubicacion ?? $d->nombre_host)->values(), 'Total', 'Costo'],
+            'rows' => $consumo->porDia()->map(fn ($dia) => [
+                Carbon::parse($dia->fecha)->format('d/m/Y'),
+                ...$columnas->map(fn ($d) => (int) ($matriz[$dia->fecha][$d->id]->total ?? 0))->values(),
+                $dia->total,
+                $q($dia->costo_total),
+            ])->all(),
+        ];
     }
 }

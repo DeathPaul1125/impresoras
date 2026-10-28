@@ -7,7 +7,7 @@
     <div class="flex flex-wrap items-end justify-between gap-3 mb-6">
         <div>
             <h1 class="text-2xl font-bold text-gray-800">Impresoras</h1>
-            <p class="text-sm text-gray-500">Equipos registrados y contadores en vivo por SNMP (totales del equipo, no se guardan).</p>
+            <p class="text-sm text-gray-500">Equipos registrados. Los contadores se guardan solos cada día a las 6 pm; aquí puedes leerlos en vivo (no se guardan).</p>
         </div>
         <x-secondary-button wire:click="leerTodas" wire:loading.attr="disabled" wire:target="leerTodas" type="button">
             <i class="fas fa-rotate me-2" wire:loading.class="fa-spin" wire:target="leerTodas"></i> Leer todas
@@ -82,7 +82,7 @@
                     <th class="px-4 py-2 text-left">IP</th>
                     <th class="px-4 py-2 text-left">Modelo</th>
                     <th class="px-4 py-2 text-left">Serie</th>
-                    <th class="px-4 py-2 text-right">Lecturas</th>
+                    <th class="px-4 py-2 text-right">Lecturas guardadas</th>
                     <th class="px-4 py-2 text-right">Total</th>
                     <th class="px-4 py-2 text-right">Impresiones</th>
                     <th class="px-4 py-2 text-right">Copias</th>
@@ -103,7 +103,7 @@
                         </td>
                         <td class="px-4 py-2">{{ $d->modelo?->nombre ?? '—' }}</td>
                         <td class="px-4 py-2">{{ $d->serie ?? '—' }}</td>
-                        <td class="px-4 py-2 text-right">{{ number_format($d->lecturas_count) }}</td>
+                        <td class="px-4 py-2 text-right" title="Última: {{ $d->contadores_max_leido_en ?? '—' }}">{{ number_format($d->contadores_count) }}</td>
                         @if ($c === false)
                             <td colspan="4" class="px-4 py-2 text-right text-red-600 text-xs">Sin respuesta SNMP</td>
                         @else

@@ -16,8 +16,7 @@ class LeerSnmp extends Command
 
     public function handle(): int
     {
-        // ponytail: hora local guardada tal cual (la app corre en UTC, igual que fecha_corte de las lecturas).
-        $ahora = now('America/Guatemala')->format('Y-m-d H:i:s');
+        $ahora = now();
         $fallas = [];
 
         foreach (Dispositivo::whereNotNull('direccion_ip')->get() as $d) {

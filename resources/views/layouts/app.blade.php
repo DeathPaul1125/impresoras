@@ -20,8 +20,6 @@
             $nav = [
                 ['route' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'fa-chart-line', 'admin' => false],
                 ['route' => 'tablero', 'label' => 'Tablero de Totales', 'icon' => 'fa-table-cells', 'admin' => false],
-                ['route' => 'verificacion', 'label' => 'Verificación', 'icon' => 'fa-clipboard-check', 'admin' => false],
-                ['route' => 'carga', 'label' => 'Carga de Contadores', 'icon' => 'fa-upload', 'admin' => true],
                 ['route' => 'impresoras', 'label' => 'Impresoras', 'icon' => 'fa-print', 'admin' => true],
                 ['route' => 'configuracion', 'label' => 'Configuración', 'icon' => 'fa-gear', 'admin' => true],
             ];

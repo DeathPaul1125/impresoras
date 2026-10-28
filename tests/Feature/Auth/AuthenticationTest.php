@@ -64,7 +64,8 @@ class AuthenticationTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSeeVolt('layout.navigation');
+            ->assertSee('Tablero de Totales')   // sidebar (layouts/app.blade.php)
+            ->assertSee('Cerrar sesión');
     }
 
     public function test_users_can_logout(): void
@@ -73,13 +74,8 @@ class AuthenticationTest extends TestCase
 
         $this->actingAs($user);
 
-        $component = Volt::test('layout.navigation');
-
-        $component->call('logout');
-
-        $component
-            ->assertHasNoErrors()
-            ->assertRedirect('/');
+        // El layout (sidebar) cierra sesión con POST /logout.
+        $this->post('/logout')->assertRedirect('/');
 
         $this->assertGuest();
     }
