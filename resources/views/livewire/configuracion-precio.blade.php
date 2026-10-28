@@ -88,6 +88,43 @@
             </x-panel>
         </div>
 
+        {{-- SNMP --}}
+        <div class="{{ $seccion }}">
+            <div>
+                <h2 class="text-sm font-semibold text-tinta">SNMP de las impresoras</h2>
+                <p class="text-sm text-tinta-3 mt-1">Con SNMP v2c se leen los contadores (6 pm), el estado y tóner (cada 15 min) y el registro de trabajos (cada minuto). La comunidad debe coincidir con la configurada en las impresoras (de fábrica: <span class="cifra">public</span>). Aquí solo se configura cómo las consulta el sistema; no se cambia nada en las impresoras.</p>
+                @unless (function_exists('snmp2_get'))
+                    <p class="mt-3 text-xs text-red-700"><i class="fas fa-triangle-exclamation me-1"></i>Este servidor no tiene la extensión php-snmp: las lecturas usan el panel web como respaldo y no hay estado, tóner ni trabajos.</p>
+                @endunless
+            </div>
+            <x-panel class="lg:col-span-2">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <x-campo label="Comunidad (lectura)" nombre="snmp_comunidad">
+                        <input type="text" wire:model="snmp_comunidad" autocomplete="off" class="{{ $ctrl }}">
+                    </x-campo>
+                    <x-campo label="Tiempo de espera (segundos)" nombre="snmp_timeout" ayuda="Por consulta. Súbelo si la red es lenta.">
+                        <input type="number" step="0.5" min="0.5" max="10" wire:model="snmp_timeout" class="{{ $ctrl }}">
+                    </x-campo>
+                    <x-campo label="Reintentos" nombre="snmp_reintentos">
+                        <input type="number" min="0" max="5" wire:model="snmp_reintentos" class="{{ $ctrl }}">
+                    </x-campo>
+                </div>
+                @if ($snmp_prueba)
+                    <ul class="mt-4 space-y-1 text-xs">
+                        @foreach ($snmp_prueba as $equipo => $res)
+                            <li class="{{ str_starts_with($res, 'Responde') ? 'text-saldo' : 'text-red-700' }}"><b>{{ $equipo }}:</b> {{ $res }}</li>
+                        @endforeach
+                    </ul>
+                @endif
+                <div class="mt-5 flex justify-end gap-2">
+                    <x-secondary-button wire:click="probarSnmp" wire:loading.attr="disabled" wire:target="probarSnmp" type="button">
+                        <i class="fas fa-satellite-dish me-2" wire:loading.class="fa-beat" wire:target="probarSnmp"></i> Probar con las impresoras
+                    </x-secondary-button>
+                    <x-primary-button wire:click="guardarSnmp" type="button">Guardar SNMP</x-primary-button>
+                </div>
+            </x-panel>
+        </div>
+
         {{-- Panel web de las impresoras --}}
         <div class="{{ $seccion }}">
             <div>

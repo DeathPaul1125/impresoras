@@ -3,6 +3,8 @@
 namespace App\Livewire;
 
 use App\Models\Configuracion;
+use App\Models\Dispositivo;
+use App\Support\Snmp;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\Layout;
@@ -47,6 +49,16 @@ class ConfiguracionPrecio extends Component
 
     public string $smtp_from_name = '';
 
+    // SNMP v2c: lectura de contadores, estado, tóner y trabajos.
+    public string $snmp_comunidad = 'public';
+
+    public float $snmp_timeout = 1.5;
+
+    public int $snmp_reintentos = 1;
+
+    /** Resultado de "Probar": ubicación => texto. */
+    public array $snmp_prueba = [];
+
     // Panel web (Command Center) de las impresoras: lectura de cuentas y respaldo de SNMP.
     public string $panel_usuario = 'Admin';
 
@@ -66,6 +78,7 @@ class ConfiguracionPrecio extends Component
         $this->correos_reportes = implode(', ', Configuracion::correosReportes());
 
         $this->panel_usuario = Configuracion::panelImpresoras()['usuario'];
+        ['comunidad' => $this->snmp_comunidad, 'timeout' => $this->snmp_timeout, 'reintentos' => $this->snmp_reintentos] = Configuracion::snmp();
 
         $s = Configuracion::smtp();
         $this->smtp_host = (string) $s['host'];
@@ -129,6 +142,33 @@ class ConfiguracionPrecio extends Component
         $this->correos_reportes = implode(', ', $correos);
 
         session()->flash('ok', $correos ? 'Los reportes se enviarán a: '.$this->correos_reportes.'.' : 'Reportes desactivados (sin destinatarios).');
+    }
+
+    public function guardarSnmp(): void
+    {
+        $this->validate([
+            'snmp_comunidad' => 'required|string|max:64',
+            'snmp_timeout' => 'required|numeric|between:0.5,10',
+            'snmp_reintentos' => 'required|integer|between:0,5',
+        ], [], ['snmp_comunidad' => 'comunidad', 'snmp_timeout' => 'tiempo de espera', 'snmp_reintentos' => 'reintentos']);
+
+        Configuracion::setSnmp(trim($this->snmp_comunidad), $this->snmp_timeout, $this->snmp_reintentos);
+        session()->flash('ok', 'Configuración SNMP guardada.');
+    }
+
+    /** Lee en vivo cada impresora con la configuración guardada (no guarda la lectura). */
+    public function probarSnmp(): void
+    {
+        $this->snmp_prueba = [];
+        if (! function_exists('snmp2_get')) {
+            $this->snmp_prueba['Servidor'] = 'La extensión php-snmp no está instalada: no se puede leer por SNMP (se usa el panel web como respaldo).';
+
+            return;
+        }
+        foreach (Dispositivo::whereNotNull('direccion_ip')->orderBy('nivel')->get() as $d) {
+            $l = Snmp::leer($d->direccion_ip);
+            $this->snmp_prueba[$d->ubicacion.' ('.$d->direccion_ip.')'] = $l ? 'Responde · contador total '.number_format((int) $l['total']) : 'Sin respuesta';
+        }
     }
 
     public function guardarPanel(): void

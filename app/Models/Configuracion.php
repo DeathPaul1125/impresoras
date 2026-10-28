@@ -60,6 +60,20 @@ class Configuracion extends Model
         ])]);
     }
 
+    /** SNMP v2c: comunidad de lectura, tiempo de espera por consulta (segundos) y reintentos. */
+    public static function snmp(): array
+    {
+        $s = json_decode((string) static::find('snmp')?->valor, true) ?: [];
+
+        return ['comunidad' => ($s['comunidad'] ?? '') ?: 'public', 'timeout' => (float) ($s['timeout'] ?? 1.5), 'reintentos' => (int) ($s['reintentos'] ?? 1)];
+    }
+
+    public static function setSnmp(string $comunidad, float $timeout, int $reintentos): void
+    {
+        static::updateOrCreate(['clave' => 'snmp'], ['valor' => json_encode(compact('comunidad', 'timeout', 'reintentos'))]);
+        \App\Support\Snmp::$cfg = null;   // que la siguiente consulta use los valores nuevos
+    }
+
     /** @return string[] destinatarios de los reportes programados. */
     public static function correosReportes(): array
     {

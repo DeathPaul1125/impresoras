@@ -2,13 +2,31 @@
 
 namespace App\Support;
 
+use App\Models\Configuracion;
+
 /**
  * Lectura de contadores por SNMP v2c (Kyocera ECOSYS). Son totales del equipo, no por cuenta.
  */
 class Snmp
 {
-    // ponytail: comunidad 'public' fija; hacerla columna si alguna impresora usa otra.
-    private const COMUNIDAD = 'public';
+    /** Configuración (Configuración → SNMP), leída una vez por proceso. */
+    public static ?array $cfg = null;
+
+    /** Consulta un OID con la comunidad, tiempo de espera y reintentos configurados. false si no responde. */
+    private static function get(string $ip, string $oid): string|false
+    {
+        $c = self::$cfg ??= Configuracion::snmp();
+
+        return @snmp2_get($ip, $c['comunidad'], $oid, (int) ($c['timeout'] * 1_000_000), $c['reintentos']);
+    }
+
+    /** Recorre una tabla; espera un segundo más que una consulta simple. */
+    private static function walk(string $ip, string $oid): array|false
+    {
+        $c = self::$cfg ??= Configuracion::snmp();
+
+        return @snmp2_real_walk($ip, $c['comunidad'], $oid, (int) (($c['timeout'] + 1) * 1_000_000), $c['reintentos']);
+    }
 
     private const OIDS = [
         'modelo' => '1.3.6.1.2.1.25.3.2.1.3.1',
@@ -29,14 +47,14 @@ class Snmp
         snmp_set_valueretrieval(SNMP_VALUE_PLAIN);
 
         // Si no responde el total, no tiene caso esperar los demás OIDs.
-        $total = @snmp2_get($ip, self::COMUNIDAD, self::OIDS['total'], 1_500_000, 1);
+        $total = self::get($ip, self::OIDS['total']);
         if ($total === false) {
             return null;
         }
 
         $datos = [];
         foreach (self::OIDS as $clave => $oid) {
-            $v = $clave === 'total' ? $total : @snmp2_get($ip, self::COMUNIDAD, $oid, 1_500_000, 1);
+            $v = $clave === 'total' ? $total : self::get($ip, $oid);
             $v = $v === false ? null : trim((string) $v, "\" \0");
             $datos[$clave] = in_array($clave, ['modelo', 'serie'], true) ? ($v ?: null) : ($v === null ? null : (int) $v);
         }
@@ -48,7 +66,7 @@ class Snmp
     private static function columna(string $ip, string $oid): array
     {
         snmp_set_oid_output_format(SNMP_OID_OUTPUT_NUMERIC);
-        $r = @snmp2_real_walk($ip, self::COMUNIDAD, $oid, 2_000_000, 1);
+        $r = self::walk($ip, $oid);
         $out = [];
         foreach (is_array($r) ? $r : [] as $k => $v) {
             $out[substr(strrchr($k, '.'), 1)] = trim((string) $v, "\" \0");
@@ -59,7 +77,7 @@ class Snmp
 
     private static function valor(string $ip, string $oid): ?string
     {
-        $v = @snmp2_get($ip, self::COMUNIDAD, $oid, 1_500_000, 1);
+        $v = self::get($ip, $oid);
 
         return $v === false ? null : trim((string) $v, "\" \0");
     }
@@ -105,7 +123,7 @@ class Snmp
             $alertas[] = ['severidad' => (int) $s === 3 ? 'critica' : 'advertencia', 'codigo' => (int) ($cod[$i] ?? 0)];
         }
 
-        $mac = @snmp2_get($ip, self::COMUNIDAD, '1.3.6.1.2.1.2.2.1.6.1', 1_500_000, 1);   // 6 bytes crudos: no recortar
+        $mac = self::get($ip, '1.3.6.1.2.1.2.2.1.6.1');   // 6 bytes crudos: no recortar
         $uptime = (int) self::valor($ip, '1.3.6.1.2.1.1.3.0');   // centésimas de segundo
 
         return [
@@ -142,7 +160,7 @@ class Snmp
 
         $trabajos = [];
         foreach (['impresion' => 6, 'envio' => 7] as $origen => $tabla) {
-            $r = @snmp2_real_walk($ip, self::COMUNIDAD, "1.3.6.1.4.1.1347.47.{$tabla}.1.1", 2_500_000, 1);
+            $r = self::walk($ip, "1.3.6.1.4.1.1347.47.{$tabla}.1.1");
             $filas = [];
             foreach (is_array($r) ? $r : [] as $k => $v) {
                 $p = explode('.', ltrim($k, '.'));

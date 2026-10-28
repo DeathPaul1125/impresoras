@@ -93,6 +93,20 @@ class PaginasTest extends TestCase
         $this->assertSame(['a@senabed.gob.gt', 'b@senabed.gob.gt'], \App\Models\Configuracion::correosReportes());
     }
 
+    public function test_configuracion_snmp(): void
+    {
+        $this->actingAs($this->preparar());
+        $this->assertSame(['comunidad' => 'public', 'timeout' => 1.5, 'reintentos' => 1], \App\Models\Configuracion::snmp());
+
+        Livewire::test(ConfiguracionPrecio::class)
+            ->assertSee('SNMP de las impresoras')
+            ->set('snmp_comunidad', 'senabed')->set('snmp_timeout', 3)->set('snmp_reintentos', 2)
+            ->call('guardarSnmp')->assertHasNoErrors()
+            ->set('snmp_timeout', 0)->call('guardarSnmp')->assertHasErrors('snmp_timeout');
+
+        $this->assertSame(['comunidad' => 'senabed', 'timeout' => 3.0, 'reintentos' => 2], \App\Models\Configuracion::snmp());
+    }
+
     public function test_cuenta_smtp_se_guarda_cifrada_y_se_aplica(): void
     {
         $this->actingAs($this->preparar());
