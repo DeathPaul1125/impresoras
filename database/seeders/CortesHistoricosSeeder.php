@@ -2,29 +2,29 @@
 
 namespace Database\Seeders;
 
-use App\Models\Configuracion;
 use App\Models\Corte;
 use App\Models\Dispositivo;
 use Illuminate\Database\Seeder;
 
 /**
- * Contrato 4912 y cortes ene–sep 2026 tomados de "Control Contadores mensuales enero-diciembre 2026".
- * Contador = B/N producido (impresiones + copias) según el proveedor. Idempotente.
+ * Cortes del contrato 4912. Ene–sep 2026 tomados de "Control Contadores mensuales enero-diciembre 2026"
+ * (contador B/N = impresiones + copias según el proveedor) y el corte de octubre leído por SNMP.
+ * Idempotente: solo crea los que falten, no pisa correcciones hechas en la pantalla Cortes.
  */
 class CortesHistoricosSeeder extends Seeder
 {
-    /** ip => [nivel, serie según contrato] */
-    private const EQUIPOS = [
-        '192.100.10.50' => ['1', 'R4P1890099'],
-        '192.100.10.110' => ['7.1', 'R4P1890103'],
-        '192.100.12.6' => ['7.2', 'R4P1786882'],
-        '192.100.10.215' => ['8.1', 'R4P1786886'],
-        '192.100.10.212' => ['8.2', 'R4P1890109'],
-        '192.100.10.176' => ['9.1', 'R4P1890108'],   // SG: el equipo actual reporta otra serie (pendiente)
-        '192.100.10.144' => ['9.2', 'R4P1890100'],
+    /** ip => serie según el contrato (SG: el equipo actual reporta otra serie, pendiente de confirmar). */
+    private const SERIES_CONTRATO = [
+        '192.100.10.50' => 'R4P1890099',
+        '192.100.10.110' => 'R4P1890103',
+        '192.100.12.6' => 'R4P1786882',
+        '192.100.10.215' => 'R4P1786886',
+        '192.100.10.212' => 'R4P1890109',
+        '192.100.10.176' => 'R4P1890108',
+        '192.100.10.144' => 'R4P1890100',
     ];
 
-    /** fecha => contadores en el orden de EQUIPOS */
+    /** fecha => contadores en el orden de SERIES_CONTRATO */
     private const CORTES = [
         '2026-01-02' => [118136, 226070, 26062, 132700, 170083, 138556, 182205],   // contador inicial
         '2026-01-25' => [120879, 239300, 27687, 141445, 179755, 143281, 191813],
@@ -38,22 +38,40 @@ class CortesHistoricosSeeder extends Seeder
         '2026-09-25' => [141679, 364866, 35796, 194678, 289221, 221383, 315628],
     ];
 
+    /**
+     * Corte de octubre registrado por SNMP el 27/10/2026 (el sistema aún no corría el 25).
+     * URC y DAJ estaban apagadas: sus contadores se ingresan a mano en Cortes.
+     * [fecha, ip, serie leída, contador]
+     */
+    private const CORTES_SNMP = [
+        ['2026-10-27 17:57:00', '192.100.10.50', 'R4P1890099', 144220],
+        ['2026-10-27 17:57:00', '192.100.10.110', 'R4P1890103', 383069],
+        ['2026-10-27 17:57:00', '192.100.10.215', 'R4P1786886', 201722],
+        ['2026-10-27 17:57:00', '192.100.10.212', 'R4P1890109', 304825],
+        ['2026-10-27 17:57:00', '192.100.10.176', 'R4P2400504', 172908],
+    ];
+
     public function run(): void
     {
-        Configuracion::setContrato(['numero' => '4912', 'bolson' => 781200, 'inicio' => '2026-01-02', 'fin' => '2026-12-31', 'dia_corte' => 25]);
+        $porIp = Dispositivo::whereIn('direccion_ip', array_keys(self::SERIES_CONTRATO))->get()->keyBy('direccion_ip');
 
-        $ips = array_keys(self::EQUIPOS);
-        foreach ($ips as $i => $ip) {
-            $d = Dispositivo::where('direccion_ip', $ip)->first();
-            if (! $d) {
+        foreach (array_keys(self::SERIES_CONTRATO) as $i => $ip) {
+            if (! $d = $porIp->get($ip)) {
                 continue;
             }
-            $d->update(['nivel' => self::EQUIPOS[$ip][0]]);
-
             foreach (self::CORTES as $fecha => $contadores) {
-                Corte::updateOrCreate(
+                Corte::firstOrCreate(
                     ['fecha' => "$fecha 00:00:00", 'dispositivo_id' => $d->id],
-                    ['serie' => self::EQUIPOS[$ip][1], 'contador' => $contadores[$i], 'origen' => 'historico'],
+                    ['serie' => self::SERIES_CONTRATO[$ip], 'contador' => $contadores[$i], 'origen' => 'historico'],
+                );
+            }
+        }
+
+        foreach (self::CORTES_SNMP as [$fecha, $ip, $serie, $contador]) {
+            if ($d = $porIp->get($ip)) {
+                Corte::firstOrCreate(
+                    ['fecha' => $fecha, 'dispositivo_id' => $d->id],
+                    ['serie' => $serie, 'contador' => $contador, 'origen' => 'snmp'],
                 );
             }
         }

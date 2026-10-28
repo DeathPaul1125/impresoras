@@ -26,3 +26,6 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /.claude/*
+
+# Datos de trabajo locales (exportes, correos guardados): no se versionan
+/data
