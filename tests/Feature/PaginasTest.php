@@ -142,6 +142,6 @@ class PaginasTest extends TestCase
         $this->actingAs($consulta)->get('/cortes')->assertForbidden();
         $this->actingAs($consulta)->get('/dashboard')->assertOk();
         $this->actingAs($consulta)->get('/tablero')->assertOk();
-        $this->get('/')->assertOk();
+        $this->get('/')->assertRedirect('/dashboard');
     }
 }

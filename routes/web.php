@@ -9,7 +9,8 @@ use App\Livewire\Impresoras;
 use App\Livewire\Tablero;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'welcome');
+// Sin portada: la raíz lleva al dashboard (y el middleware auth manda al login a quien no haya entrado).
+Route::redirect('/', '/dashboard');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', DashboardGeneral::class)->name('dashboard');
