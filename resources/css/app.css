@@ -11,6 +11,7 @@
 /* Cifras de contadores alineadas en columnas (sin saltos al actualizar). */
 table, .cifra { font-variant-numeric: tabular-nums; }
 h1, h2, h3 { text-wrap: balance; }
+[x-cloak] { display: none !important; }
 
 /* Superficies del navegador con la paleta (selección y cursor). */
 ::selection { background: rgba(41, 169, 224, 0.28); color: #0d2149; }

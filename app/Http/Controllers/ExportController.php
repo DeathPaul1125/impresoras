@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Exports\ConsumoExport;
 use App\Exports\ControlContadoresExport;
+use App\Models\Trabajo;
 use App\Support\Consumo;
 use App\Support\ConsumoCuentas;
 use App\Support\Contrato;
+use App\Support\ReporteMensual;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,6 +24,12 @@ class ExportController extends Controller
     {
         if ($tipo === 'control') {
             return Excel::download(new ControlContadoresExport, 'control_contadores_'.now()->format('Ymd_His').'.xlsx');
+        }
+        if ($tipo === 'trabajos') {
+            abort_unless(Gate::allows('admin'), 403);   // incluye nombres de documentos
+            $d = ReporteMensual::hojaTrabajos(Trabajo::filtrar($request->only(['desde', 'hasta', 'dispositivo', 'tipo', 'buscar'])));
+
+            return Excel::download(new ConsumoExport($d['headings'], $d['rows'], $d['titulo']), 'trabajos_'.now()->format('Ymd_His').'.xlsx');
         }
         abort_unless(in_array($tipo, self::TIPOS, true), 404);
 

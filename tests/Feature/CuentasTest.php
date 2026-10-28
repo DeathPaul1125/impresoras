@@ -64,7 +64,7 @@ class CuentasTest extends TestCase
         $this->assertSame(['privado' => '1', 'clave' => '808', 'nombre' => 'UAI_Lizbeth Mazariegos'], $lote[0]);
 
         // El último elemento de cada arreglo es el total de la cuenta.
-        $this->assertSame(['impresiones' => 40, 'copias' => 127, 'escaneos' => 130], CommandCenter::parseContadores(self::PRN, self::SCN));
+        $this->assertSame(['impresiones' => 40, 'copias' => 127, 'escaneos' => 130, 'simplex' => null, 'duplex' => null], CommandCenter::parseContadores(self::PRN, self::SCN));
 
         $equipo = CommandCenter::parseEquipo(self::EQUIPO_PRN, self::EQUIPO_SCN);
         $this->assertSame([211869, 171475, 278510], [$equipo['impresiones'], $equipo['copias'], $equipo['escaneos']]);

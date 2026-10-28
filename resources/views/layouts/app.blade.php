@@ -55,6 +55,7 @@
                 ['route' => 'dashboard', 'label' => 'Dashboard del contrato', 'icon' => 'fa-chart-line', 'admin' => false],
                 ['route' => 'tablero', 'label' => 'Análisis de consumo', 'icon' => 'fa-table-cells', 'admin' => false],
                 ['route' => 'impresoras', 'label' => 'Impresoras', 'icon' => 'fa-print', 'admin' => true],
+                ['route' => 'trabajos', 'label' => 'Registro de trabajos', 'icon' => 'fa-list-check', 'admin' => true],
                 ['route' => 'cortes', 'label' => 'Cortes del contrato', 'icon' => 'fa-scissors', 'admin' => true],
                 ['route' => 'configuracion', 'label' => 'Configuración', 'icon' => 'fa-gear', 'admin' => true],
             ];

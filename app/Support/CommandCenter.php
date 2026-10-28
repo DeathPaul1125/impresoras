@@ -183,10 +183,14 @@ class CommandCenter
             return (int) end($n[1]);
         };
 
+        // duplexCounter = [una cara, doble cara, total]
+        $duplex = preg_match('/_pp\.duplexCounter\s*=\s*\[(.*?)\];/s', $prn, $m) && preg_match_all("/'(\d+)'/", $m[1], $d) && count($d[1]) >= 2
+            ? ['simplex' => (int) $d[1][0], 'duplex' => (int) $d[1][1]] : ['simplex' => null, 'duplex' => null];
+
         return [
             'impresiones' => $ultimo($prn, 'printerCounter'),
             'copias' => $ultimo($prn, 'copyCounter'),
             'escaneos' => $ultimo($scn, 'counterScanCounter'),
-        ];
+        ] + $duplex;
     }
 }

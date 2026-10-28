@@ -3,14 +3,17 @@
 namespace App\Exports;
 
 use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
  * Exportación genérica: recibe encabezados y filas ya calculados.
- * Reutilizada para usuarios, unidades, dispositivos y tendencias.
+ * Reutilizada para usuarios, unidades, dispositivos, tendencias, trabajos y cada hoja del reporte mensual.
  */
-class ConsumoExport implements FromArray, WithHeadings, WithTitle
+class ConsumoExport implements FromArray, ShouldAutoSize, WithHeadings, WithStyles, WithTitle
 {
     public function __construct(
         private array $headings,
@@ -30,6 +33,13 @@ class ConsumoExport implements FromArray, WithHeadings, WithTitle
 
     public function title(): string
     {
-        return $this->titulo;
+        return mb_substr($this->titulo, 0, 31);   // límite de Excel para nombres de hoja
+    }
+
+    public function styles(Worksheet $sheet): array
+    {
+        $sheet->freezePane('A2');
+
+        return [1 => ['font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']], 'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '0D2149']]]];
     }
 }

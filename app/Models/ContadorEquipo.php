@@ -11,10 +11,11 @@ class ContadorEquipo extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['dispositivo_id', 'total', 'impresiones', 'copias', 'escaneos', 'leido_en'];
+    protected $fillable = ['dispositivo_id', 'total', 'impresiones', 'copias', 'escaneos', 'leido_en', 'detalle'];
 
     protected $casts = [
         'leido_en' => 'datetime',
+        'detalle' => 'array',
     ];
 
     public function dispositivo(): BelongsTo

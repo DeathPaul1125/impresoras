@@ -10,7 +10,20 @@ class Dispositivo extends Model
 {
     protected $table = 'dispositivos';
 
-    protected $fillable = ['ubicacion', 'nivel', 'nombre_host', 'direccion_ip', 'modelo_id', 'serie'];
+    protected $fillable = ['ubicacion', 'nivel', 'nombre_host', 'direccion_ip', 'modelo_id', 'serie', 'estado', 'estado_en'];
+
+    protected $casts = ['estado' => 'array', 'estado_en' => 'datetime'];
+
+    /** Nombres de los tamaños de papel que reporta la Kyocera. */
+    public const PAPEL = [
+        'Letter' => 'Carta', 'Legal' => 'Oficio (legal)', 'Folio' => 'Folio', 'Statement' => 'Media carta',
+        'A4' => 'A4', 'A5' => 'A5', 'B5' => 'B5', 'Other1' => 'Otro 1', 'Other2' => 'Otro 2', 'Banner1' => 'Banner',
+    ];
+
+    public static function nombrePapel(string $tamano): string
+    {
+        return self::PAPEL[$tamano] ?? $tamano;
+    }
 
     public function modelo(): BelongsTo
     {

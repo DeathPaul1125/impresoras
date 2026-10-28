@@ -11,7 +11,7 @@ class ContadorCuenta extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['cuenta_id', 'dispositivo_id', 'impresiones', 'copias', 'escaneos', 'leido_en'];
+    protected $fillable = ['cuenta_id', 'dispositivo_id', 'impresiones', 'copias', 'escaneos', 'simplex', 'duplex', 'leido_en'];
 
     protected $casts = ['leido_en' => 'datetime'];
 

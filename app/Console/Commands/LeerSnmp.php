@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\ContadorEquipo;
 use App\Models\Dispositivo;
 use App\Support\Lector;
+use App\Support\Snmp;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -35,6 +36,10 @@ class LeerSnmp extends Command
                 'copias' => $l['copias'],
                 'escaneos' => $l['escaneos'],
                 'leido_en' => $ahora,
+                // Foto del día para el reporte mensual: tóner, papel por tamaño y simplex/dúplex.
+                'detalle' => ($det = Snmp::detalle($d->direccion_ip))
+                    ? array_intersect_key($det, array_flip(['toner', 'papel', 'simplex', 'duplex', 'alertas']))
+                    : null,
             ]);
             $this->line("{$d->ubicacion}: total {$l['total']}");
         }

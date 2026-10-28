@@ -7,6 +7,7 @@ use App\Livewire\Cortes;
 use App\Livewire\DashboardGeneral;
 use App\Livewire\Impresoras;
 use App\Livewire\Tablero;
+use App\Livewire\Trabajos;
 use Illuminate\Support\Facades\Route;
 
 // Sin portada: la raíz lleva al dashboard (y el middleware auth manda al login a quien no haya entrado).
@@ -23,6 +24,7 @@ Route::middleware(['auth'])->group(function () {
     // Solo administradores
     Route::middleware('can:admin')->group(function () {
         Route::get('impresoras', Impresoras::class)->name('impresoras');
+        Route::get('trabajos', Trabajos::class)->name('trabajos');
         Route::get('cortes', Cortes::class)->name('cortes');
         Route::get('configuracion', ConfiguracionPrecio::class)->name('configuracion');
     });

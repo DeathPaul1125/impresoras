@@ -4,17 +4,19 @@ namespace App\Console\Commands;
 
 use App\Mail\ReporteConsumo;
 use App\Mail\ReporteCorte;
+use App\Mail\ReporteDetallado;
 use App\Models\Configuracion;
 use App\Support\Consumo;
 use App\Support\ConsumoCuentas;
 use App\Support\Contrato;
+use App\Support\ReporteMensual;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 
 class EnviarReporte extends Command
 {
-    protected $signature = 'impresoras:enviar-reporte {tipo : diario|semanal|mensual}';
+    protected $signature = 'impresoras:enviar-reporte {tipo : diario|semanal|mensual|detallado} {--mes= : detallado: mes AAAA-MM (por defecto, el actual)}';
 
     protected $description = 'Envía por correo el consumo del día, de la semana (lunes a viernes) o el reporte del corte mensual del contrato';
 
@@ -22,13 +24,14 @@ class EnviarReporte extends Command
         'diario' => 'Reporte diario',
         'semanal' => 'Reporte de fin de semana (lunes a viernes)',
         'mensual' => 'Reporte de corte mensual',
+        'detallado' => 'Reporte detallado de fin de mes',
     ];
 
     public function handle(): int
     {
         $tipo = $this->argument('tipo');
         if (! isset(self::TITULOS[$tipo])) {
-            $this->error('Tipo inválido. Use: diario, semanal o mensual.');
+            $this->error('Tipo inválido. Use: diario, semanal, mensual o detallado.');
 
             return self::INVALID;
         }
@@ -41,6 +44,15 @@ class EnviarReporte extends Command
         }
 
         Configuracion::aplicarSmtp();
+
+        // Detallado = mes calendario completo (se envía el último día del mes, después de la lectura de las 6 pm).
+        if ($tipo === 'detallado') {
+            $mail = new ReporteDetallado(new ReporteMensual($this->option('mes') ? Carbon::parse($this->option('mes').'-01') : today()));
+            Mail::to($correos)->send($mail);
+            $this->info($mail->envelope()->subject.': enviado a '.implode(', ', $correos));
+
+            return self::SUCCESS;
+        }
 
         // Mensual = corte del contrato (se envía después de registrar el corte del día 25).
         if ($tipo === 'mensual') {

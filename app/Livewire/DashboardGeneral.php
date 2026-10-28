@@ -64,6 +64,7 @@ class DashboardGeneral extends Component
             'sel' => $sel,
             'esUltimo' => $esUltimo,
             'ficha' => $equipo ? $this->ficha($equipo, $periodos) : null,
+            'estados' => \App\Models\Dispositivo::whereNotNull('estado')->orderBy('nivel')->get(['id', 'ubicacion', 'nivel', 'estado', 'estado_en']),
         ]);
     }
 

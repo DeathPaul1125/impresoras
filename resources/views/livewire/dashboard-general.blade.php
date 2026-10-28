@@ -98,6 +98,35 @@
         </details>
     @endif
 
+    {{-- Estado de los equipos (SNMP cada 15 min): disponibilidad, tóner y alertas. --}}
+    @if ($estados->isNotEmpty())
+        <div class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2">
+            @foreach ($estados as $eq)
+                @php
+                    $e = $eq->estado;
+                    $t = $e['toner']['pct'] ?? null;
+                    $ok = ($e['estado'] ?? null) === 'disponible' || ($e['estado'] ?? null) === 'imprimiendo';
+                @endphp
+                <div class="bg-white rounded-lg shadow-hoja px-3 py-2 {{ $ok ? '' : 'ring-1 ring-inset ring-amber-300' }}"
+                     title="{{ $e['mensaje'] ?? '' }} · actualizado {{ $eq->estado_en?->diffForHumans() }}">
+                    <div class="flex items-center gap-1.5 text-xs">
+                        <span class="size-2 rounded-full {{ ($e['estado'] ?? null) === 'sin_respuesta' ? 'bg-red-500' : ($ok ? 'bg-saldo' : 'bg-amber-500') }}"></span>
+                        <span class="font-semibold text-tinta truncate">{{ $eq->ubicacion }}</span>
+                        @if (count($e['alertas'] ?? [])) <i class="fas fa-triangle-exclamation ms-auto text-amber-600" title="{{ count($e['alertas']) }} alerta(s) activa(s)"></i> @endif
+                    </div>
+                    @if ($t !== null)
+                        <div class="mt-1.5 flex items-center gap-1.5">
+                            <div class="h-1.5 flex-1 rounded-full bg-papel overflow-hidden">
+                                <div class="h-full {{ $t < 10 ? 'bg-red-600' : ($t < 25 ? 'bg-amber-500' : 'bg-saldo') }}" style="width: {{ $t }}%"></div>
+                            </div>
+                            <span class="cifra text-[11px] {{ $t < 10 ? 'text-red-700 font-semibold' : 'text-tinta-3' }}">{{ $t }}%</span>
+                        </div>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+    @endif
+
     {{-- KPIs --}}
     <div class="grid grid-cols-2 md:grid-cols-4 2xl:grid-cols-7 gap-3">
         @foreach ($kpis as [$titulo, $sub, $valor, $pie, $icono, $color])

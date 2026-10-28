@@ -67,6 +67,7 @@
             <thead>
                 <tr>
                     <th class="px-5 py-2.5 text-left">Equipo</th>
+                    <th class="px-3 py-2.5 text-left">Estado y tóner</th>
                     <th class="px-3 py-2.5 text-left">Red</th>
                     <th class="px-3 py-2.5 text-left">Modelo / serie</th>
                     <th class="px-3 py-2.5 text-right">Lecturas</th>
@@ -77,15 +78,39 @@
                     <th class="px-5 py-2.5"></th>
                 </tr>
             </thead>
-            <tbody class="divide-y">
-                @forelse ($impresoras as $d)
-                    @php $c = $contadores[$d->id] ?? null; @endphp
-                    <tr wire:key="imp-{{ $d->id }}" class="hover:bg-papel/70 {{ $editando === $d->id ? 'bg-marino-50' : '' }}">
+            @forelse ($impresoras as $d)
+                @php
+                    $c = $contadores[$d->id] ?? null;
+                    $e = $d->estado ?? [];
+                    $toner = $e['toner']['pct'] ?? null;
+                    $punto = match ($e['estado'] ?? null) { 'disponible' => 'bg-saldo', 'imprimiendo' => 'bg-marino-600', 'sin_respuesta' => 'bg-red-500', null => 'bg-tinta-4', default => 'bg-amber-500' };
+                    $textoEstado = match ($e['estado'] ?? null) { 'disponible' => 'Disponible', 'imprimiendo' => 'Imprimiendo', 'calentando' => 'Calentando', 'sin_respuesta' => 'Sin respuesta', null => 'Sin datos', default => 'Atención' };
+                @endphp
+                <tbody wire:key="imp-{{ $d->id }}" x-data="{ ficha: false }" class="border-b border-linea">
+                    <tr class="hover:bg-papel/70 {{ $editando === $d->id ? 'bg-marino-50' : '' }}">
                         <td class="px-5 py-3">
                             <div class="flex items-center gap-2">
                                 <x-nivel :nivel="$d->nivel" />
                                 <span class="font-semibold text-tinta">{{ $d->ubicacion ?? '—' }}</span>
                             </div>
+                        </td>
+                        <td class="px-3 py-3 min-w-[180px]">
+                            <div class="flex items-center gap-2 text-xs">
+                                <span class="size-2 rounded-full {{ $punto }}"></span>
+                                <span class="font-medium text-tinta">{{ $textoEstado }}</span>
+                                @if (! empty($e['mensaje']) && $e['mensaje'] !== 'Preparado.') <span class="text-tinta-3 truncate max-w-[140px]" title="{{ $e['mensaje'] }}">· {{ $e['mensaje'] }}</span> @endif
+                                @if (count($e['alertas'] ?? []))
+                                    <span class="ms-auto inline-flex items-center gap-1 text-amber-700" title="Alertas activas en la impresora"><i class="fas fa-triangle-exclamation"></i>{{ count($e['alertas']) }}</span>
+                                @endif
+                            </div>
+                            @if ($toner !== null)
+                                <div class="mt-1.5 flex items-center gap-2" title="Tóner {{ $e['toner']['nombre'] ?? '' }}">
+                                    <div class="h-1.5 flex-1 rounded-full bg-papel overflow-hidden">
+                                        <div class="h-full {{ $toner < 10 ? 'bg-red-600' : ($toner < 25 ? 'bg-amber-500' : 'bg-saldo') }}" style="width: {{ $toner }}%"></div>
+                                    </div>
+                                    <span class="cifra text-[11px] font-semibold {{ $toner < 10 ? 'text-red-700' : 'text-tinta-2' }}">{{ $toner }}%</span>
+                                </div>
+                            @endif
                         </td>
                         <td class="px-3 py-3">
                             <div class="text-tinta">{{ $d->nombre_host }}</div>
@@ -112,6 +137,9 @@
                             <td class="px-3 py-3 text-right font-semibold text-tinta">{{ $n($c['total'] ?? null) }}</td>
                         @endif
                         <td class="px-5 py-3 text-right whitespace-nowrap">
+                            <button type="button" @click="ficha = !ficha" title="Ficha técnica" :aria-expanded="ficha" class="size-8 inline-flex items-center justify-center rounded-md text-tinta-3 hover:bg-papel hover:text-marino-600" :class="ficha && 'bg-papel text-marino-600'">
+                                <i class="fas fa-circle-info"></i>
+                            </button>
                             <button type="button" wire:click="leer({{ $d->id }})" title="Leer en vivo" class="size-8 inline-flex items-center justify-center rounded-md text-tinta-3 hover:bg-papel hover:text-marino-600">
                                 <i class="fas fa-rotate" wire:loading.class="fa-spin" wire:target="leer({{ $d->id }})"></i>
                             </button>
@@ -124,10 +152,67 @@
                             </button>
                         </td>
                     </tr>
-                @empty
-                    <tr><td colspan="9" class="px-5 py-10 text-center text-tinta-3">Todavía no hay impresoras. Agrega la primera con el formulario de arriba.</td></tr>
-                @endforelse
-            </tbody>
+                    {{-- Ficha técnica --}}
+                    <tr x-show="ficha" x-cloak class="bg-papel/60">
+                        <td colspan="10" class="px-5 py-4">
+                            @if (! $e)
+                                <p class="text-xs text-tinta-3">Aún no hay datos de estado: se leen cada 15 minutos por SNMP.</p>
+                            @else
+                                @php
+                                    $papel = collect($e['papel'] ?? [])->sortDesc();
+                                    $totPapel = max(1, $papel->sum());
+                                    $dup = ($e['simplex'] ?? 0) + ($e['duplex'] ?? 0);
+                                @endphp
+                                <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-x-6 gap-y-3 text-xs">
+                                    @foreach ([
+                                        ['Firmware', $e['firmware'] ?? '—'],
+                                        ['Firmware del motor', $e['firmware_motor'] ?? '—'],
+                                        ['MAC', $e['mac'] ?? '—'],
+                                        ['Encendida desde hace', isset($e['encendido_horas']) ? ($e['encendido_horas'] >= 48 ? round($e['encendido_horas'] / 24, 1).' días' : $e['encendido_horas'].' h') : '—'],
+                                        ['Ubicación configurada', $e['ubicacion_configurada'] ?? '—'],
+                                        ['Instalada', $e['instalada'] ?? '—'],
+                                    ] as [$k, $v])
+                                        <div><div class="text-tinta-3">{{ $k }}</div><div class="font-medium text-tinta cifra">{{ $v }}</div></div>
+                                    @endforeach
+                                </div>
+                                <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
+                                    <div>
+                                        <div class="font-semibold text-tinta-2 mb-1.5">Páginas por tamaño de papel</div>
+                                        @foreach ($papel as $tam => $pag)
+                                            <div class="flex items-center gap-2 py-0.5">
+                                                <span class="w-24 text-tinta-2">{{ \App\Models\Dispositivo::nombrePapel($tam) }}</span>
+                                                <div class="h-1.5 flex-1 rounded-full bg-white overflow-hidden"><div class="h-full bg-marino-600" style="width: {{ round($pag / $totPapel * 100, 1) }}%"></div></div>
+                                                <span class="w-28 text-right cifra text-tinta">{{ number_format($pag) }} · {{ round($pag / $totPapel * 100, 1) }}%</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                    <div>
+                                        <div class="font-semibold text-tinta-2 mb-1.5">Una cara / doble cara</div>
+                                        @if ($dup)
+                                            <div class="cifra text-tinta">Una cara: <b>{{ number_format($e['simplex']) }}</b> · Doble cara: <b>{{ number_format($e['duplex']) }}</b></div>
+                                            <div class="mt-1 text-tinta-3">{{ round($e['duplex'] / $dup * 100, 1) }}% de las páginas se imprimen a doble cara.</div>
+                                        @else
+                                            <div class="text-tinta-3">Sin dato.</div>
+                                        @endif
+                                    </div>
+                                    <div>
+                                        <div class="font-semibold text-tinta-2 mb-1.5">Suministros y alertas</div>
+                                        @foreach ($e['suministros'] ?? [] as $s)
+                                            <div class="cifra text-tinta">{{ $s['nombre'] }}: {{ $s['pct'] !== null ? $s['pct'].'%' : ($s['nivel'] === -3 ? 'con existencia' : 'sin dato') }}</div>
+                                        @endforeach
+                                        @if (count($e['alertas'] ?? []))
+                                            <div class="mt-1 text-amber-700">Alertas activas: {{ collect($e['alertas'])->map(fn ($a) => ($a['severidad'] === 'critica' ? 'crítica ' : '').'#'.$a['codigo'])->implode(', ') }}</div>
+                                        @endif
+                                        <div class="mt-1 text-tinta-4">Actualizado {{ $d->estado_en?->diffForHumans() ?? '—' }}</div>
+                                    </div>
+                                </div>
+                            @endif
+                        </td>
+                    </tr>
+                </tbody>
+            @empty
+                <tbody><tr><td colspan="10" class="px-5 py-10 text-center text-tinta-3">Todavía no hay impresoras. Agrega la primera con el formulario de arriba.</td></tr></tbody>
+            @endforelse
         </table>
     </x-tabla-seccion>
 </div>
