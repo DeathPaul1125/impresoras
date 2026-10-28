@@ -134,6 +134,7 @@ class Consumo
         $rows = $this->dispositivos()->map(fn (Dispositivo $d) => $this->sumar($porId->get($d->id, collect()), [
             'id' => $d->id,
             'ubicacion' => $d->ubicacion,
+            'nivel' => $d->nivel,
             'nombre_host' => $d->nombre_host,
             'direccion_ip' => $d->direccion_ip,
             'modelo' => $d->modelo?->nombre,

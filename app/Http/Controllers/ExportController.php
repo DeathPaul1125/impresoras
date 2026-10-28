@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Exports\ConsumoExport;
+use App\Exports\ControlContadoresExport;
 use App\Support\Consumo;
+use App\Support\Contrato;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -16,6 +18,9 @@ class ExportController extends Controller
 
     public function excel(Request $request, string $tipo): Response
     {
+        if ($tipo === 'control') {
+            return Excel::download(new ControlContadoresExport, 'control_contadores_'.now()->format('Ymd_His').'.xlsx');
+        }
         abort_unless(in_array($tipo, self::TIPOS, true), 404);
 
         $d = $this->datos($tipo, $request);
@@ -28,6 +33,9 @@ class ExportController extends Controller
 
     public function pdf(Request $request, string $tipo): Response
     {
+        if (in_array($tipo, ['resumen', 'control'], true)) {
+            return self::pdfResumen()->download('resumen_contrato_'.now()->format('Ymd_His').'.pdf');
+        }
         abort_unless(in_array($tipo, self::TIPOS, true), 404);
 
         $d = $this->datos($tipo, $request);
@@ -38,6 +46,15 @@ class ExportController extends Controller
             'rows' => $d['rows'],
             'filtros' => $this->filtrosLegibles($request),
         ])->setPaper('a4', 'landscape')->download($tipo.'_'.now()->format('Ymd_His').'.pdf');
+    }
+
+    /** PDF ejecutivo del contrato (dashboard + control de contadores). También se adjunta en el reporte de corte. */
+    public static function pdfResumen(): \Barryvdh\DomPDF\PDF
+    {
+        $c = new Contrato;
+        $r = $c->resumen();
+
+        return Pdf::loadView('exports.resumen-contrato', ['r' => $r, 'hallazgos' => $c->hallazgos($r)])->setPaper('a4', 'landscape');
     }
 
     private function filtros(Request $request): array

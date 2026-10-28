@@ -40,6 +40,42 @@ class Tablero extends Component
         }
     }
 
+    /** Nivel de uso relativo al equipo de mayor consumo B/N: [etiqueta, clases]. */
+    public static function nivel(int $valor, int $max): array
+    {
+        $pct = $max ? $valor / $max * 100 : 0;
+
+        return match (true) {
+            $pct >= 90 => ['CRÍTICA', 'text-red-400'],
+            $pct >= 75 => ['ALTA', 'text-orange-400'],
+            $pct >= 50 => ['MEDIA', 'text-amber-300'],
+            $pct >= 30 => ['MODERADA', 'text-yellow-300'],
+            $pct >= 10 => ['BAJA', 'text-green-400'],
+            default => ['MÍNIMA', 'text-emerald-300'],
+        };
+    }
+
+    /** Hallazgos del período: [título, texto]. */
+    private function hallazgos($equipos): array
+    {
+        $con = $equipos->filter(fn ($e) => $e->bn + $e->escaneos > 0)->values();
+        if ($con->isEmpty()) {
+            return [];
+        }
+        $k = fn ($v) => $v >= 1000 ? round($v / 1000).'k' : number_format($v);
+        $top = $con->first();
+        $escaneo = $con->sortByDesc(fn ($e) => $e->escaneos / max(1, $e->bn))->first();
+        $bajo = $con->sortBy('bn')->first();
+        $copias = $con->sortByDesc(fn ($e) => $e->copias / max(1, $e->bn))->first();
+
+        return [
+            ['Punto de flujo crítico', "{$top->ubicacion} lidera con {$k($top->bn)} páginas B/N ({$k($top->impresiones)} impresiones, {$k($top->copias)} copias) y {$k($top->escaneos)} escaneos."],
+            ['Foco en escaneo', "{$escaneo->ubicacion} escanea ".round($escaneo->escaneos / max(1, $escaneo->bn), 1).' páginas por cada página impresa o copiada.'],
+            ['Oportunidad de balance', "{$bajo->ubicacion} es el equipo menos usado en papel ({$k($bajo->bn)}); puede absorber carga de {$top->ubicacion}."],
+            ['Mayor uso como copiadora', "En {$copias->ubicacion} el ".round($copias->copias / max(1, $copias->bn) * 100).'% del papel son copias.'],
+        ];
+    }
+
     public function filtrar(): void
     {
         // wire:model deferido; el submit sólo fuerza el re-render.
@@ -54,9 +90,14 @@ class Tablero extends Component
         $tendencias = $consumo->tendenciaMensual();
         $columnas = $consumo->dispositivos();   // orden fijo por ubicación para la tabla día × impresora
 
+        $impresoras = $consumo->porDispositivo($this->sort_field, $this->sort_order);
+        $equipos = $impresoras->each(fn ($r) => $r->bn = $r->impresiones + $r->copias)->sortByDesc('bn')->values();
+
         return view('livewire.tablero', [
             'totales' => $consumo->totales(),
-            'impresoras' => $consumo->porDispositivo($this->sort_field, $this->sort_order),
+            'impresoras' => $impresoras,
+            'equipos' => $equipos,
+            'hallazgos' => $this->hallazgos($equipos),
             'porDia' => $porDia,
             'matriz' => $matriz,
             'columnas' => $columnas,
