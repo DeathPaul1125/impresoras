@@ -47,8 +47,8 @@ class DashboardGeneral extends Component
         $r = $contrato->resumen();
         $periodos = $r['periodos'];
 
-        // Color fijo por impresora (orden por nivel), igual en todas las gráficas.
-        $colorDe = $r['por_equipo']->values()->mapWithKeys(fn ($e, $i) => [$e->id => self::COLORES[$i % count(self::COLORES)]])->all();
+        // Color por posición en el ranking de consumo (como el dashboard de referencia: 1.º azul, 2.º naranja, 3.º verde...).
+        $colorDe = $r['por_equipo']->sortByDesc('acumulado')->values()->mapWithKeys(fn ($e, $i) => [$e->id => self::COLORES[$i % count(self::COLORES)]])->all();
 
         $equipo = $this->equipo ? $r['por_equipo']->firstWhere('id', $this->equipo) : null;
         if ($this->equipo && ! $equipo) {

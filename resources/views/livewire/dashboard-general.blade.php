@@ -24,7 +24,6 @@
         ['Bolsón disponible', 'al '.$f($r['corte_al']), $n($r['disponible']), 'Páginas disponibles', 'fa-box-open', $r['porcentaje'] >= 90 ? 'red' : 'orange'],
         ['% consumo del bolsón', '', $r['porcentaje'].'%', 'Del total contratado', 'fa-chart-pie', 'teal'],
         ['Producido '.mb_strtolower($mes($sel?->fecha)), $sel ? 'corte '.$f($sel->fecha) : '', $n($sel?->total), $esUltimo ? 'Páginas del último corte' : 'Corte seleccionado', 'fa-print', 'amber'],
-        ['En curso', $r['en_curso']->desde ? 'desde '.$f($r['en_curso']->desde) : '', $n($r['en_curso']->total), 'Desde el último corte', 'fa-hourglass-half', 'blue'],
     ];
     $seccion = 'bg-white rounded-xl shadow-hoja overflow-hidden';
     $cabecera = 'bg-marino text-white text-center px-4 py-2.5';
@@ -65,9 +64,9 @@
         </div>
     </div>
 
-    {{-- Selección activa --}}
+    {{-- Selección activa (solo cuando hay algo seleccionado) --}}
+    @if ($equipo || $periodo)
     <div class="flex flex-wrap items-center gap-2 text-sm">
-        @if ($equipo || $periodo)
             <span class="text-tinta-3">Viendo:</span>
             @if ($selNombre)
                 <button type="button" wire:click="seleccionarEquipo" class="inline-flex items-center gap-2 h-7 ps-2 pe-2.5 rounded-full bg-white shadow-hoja hover:bg-papel">
@@ -81,30 +80,38 @@
                 </button>
             @endif
             <button type="button" wire:click="limpiar" class="text-xs font-medium text-marino-600 hover:underline">Quitar selección</button>
-        @else
-            <span class="text-xs text-tinta-3"><i class="fas fa-hand-pointer me-1"></i> Haz clic en una impresora (tabla, dona o leyenda) o en un mes de la tendencia para ver su detalle.</span>
-        @endif
     </div>
+    @endif
 
     @if ($r['alertas'])
-        <div class="rounded-xl bg-amber-50 ring-1 ring-inset ring-amber-300/60 px-5 py-3 text-amber-900">
-            <div class="flex items-center gap-2 text-sm font-semibold"><i class="fas fa-triangle-exclamation"></i> Pendientes de revisar ({{ count($r['alertas']) }})</div>
-            <ul class="mt-1.5 space-y-1 text-[13px] list-disc ps-6 marker:text-amber-500">
+        <details class="group rounded-lg bg-amber-50 ring-1 ring-inset ring-amber-300/60 px-4 py-2 text-amber-900">
+            <summary class="flex items-center gap-2 text-sm cursor-pointer list-none">
+                <i class="fas fa-triangle-exclamation"></i>
+                <b>{{ count($r['alertas']) }} pendiente{{ count($r['alertas']) > 1 ? 's' : '' }} de revisar</b>
+                <span class="truncate text-amber-800">· {{ \Illuminate\Support\Str::limit($r['alertas'][0], 110) }}</span>
+                <span class="ms-auto shrink-0 text-xs font-semibold text-amber-800">Ver detalle <i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i></span>
+            </summary>
+            <ul class="mt-2 space-y-1 text-[13px] list-disc ps-6 marker:text-amber-500">
                 @foreach ($r['alertas'] as $a) <li>{{ $a }}</li> @endforeach
             </ul>
-            @can('admin') <a href="{{ route('cortes') }}" wire:navigate class="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 hover:underline">Ir a Cortes del contrato <i class="fas fa-arrow-right"></i></a> @endcan
-        </div>
+            @can('admin') <a href="{{ route('cortes') }}" wire:navigate class="mt-1.5 mb-1 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 hover:underline">Ir a Cortes del contrato <i class="fas fa-arrow-right"></i></a> @endcan
+        </details>
     @endif
 
     {{-- KPIs --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="grid grid-cols-2 md:grid-cols-4 2xl:grid-cols-7 gap-3">
         @foreach ($kpis as [$titulo, $sub, $valor, $pie, $icono, $color])
-            <div class="bg-white rounded-xl shadow-hoja px-4 py-3.5 flex items-center gap-4">
-                <span class="shrink-0 inline-flex items-center justify-center size-12 rounded-full text-white text-lg {{ $iconos[$color] }}"><i class="fas {{ $icono }}"></i></span>
-                <div class="min-w-0">
-                    <div class="text-[11px] font-semibold uppercase tracking-wide {{ $titulos[$color] }}">{{ $titulo }} <span class="font-medium normal-case tracking-normal text-tinta-3">{{ $sub }}</span></div>
-                    <div class="cifra text-[28px] font-bold tracking-tight leading-tight {{ $titulos[$color] }}">{{ $valor }}</div>
-                    <div class="text-xs text-tinta-3">{{ $pie }}</div>
+            <div class="bg-white rounded-xl shadow-hoja px-3 py-3 flex flex-col">
+                <div class="text-center leading-tight">
+                    <div class="text-xs font-bold uppercase {{ $titulos[$color] }}">{{ $titulo }}</div>
+                    <div class="text-[11px] font-semibold {{ $titulos[$color] }} opacity-80 truncate">{{ $sub ?: ' ' }}</div>
+                </div>
+                <div class="flex items-center gap-3 mt-2 mx-auto">
+                    <span class="shrink-0 inline-flex items-center justify-center size-11 rounded-full text-white {{ $iconos[$color] }}"><i class="fas {{ $icono }}"></i></span>
+                    <div class="min-w-0">
+                        <div class="cifra text-[26px] font-bold tracking-tight leading-none {{ $titulos[$color] }}">{{ $valor }}</div>
+                        <div class="text-[11px] text-tinta-3 mt-1">{{ $pie }}</div>
+                    </div>
                 </div>
             </div>
         @endforeach
