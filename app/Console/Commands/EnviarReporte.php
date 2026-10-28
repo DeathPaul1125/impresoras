@@ -6,6 +6,7 @@ use App\Mail\ReporteConsumo;
 use App\Mail\ReporteCorte;
 use App\Models\Configuracion;
 use App\Support\Consumo;
+use App\Support\ConsumoCuentas;
 use App\Support\Contrato;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -67,6 +68,12 @@ class EnviarReporte extends Command
             ->map(fn ($d) => [Carbon::parse($d->fecha)->format('d/m/Y'), $d->impresiones, $d->copias, $d->escaneos, $d->total, 'Q'.number_format($d->costo_total, 2)])
             ->all();
 
+        // Por usuario y unidad (contabilidad de trabajos de las impresoras).
+        $cuentas = new ConsumoCuentas(['fecha_inicio' => $inicio->toDateString(), 'fecha_fin' => $hoy->toDateString()]);
+        $q = fn ($v) => 'Q'.number_format($v, 2);
+        $usuarios = $cuentas->porUsuario()->take(10)->map(fn ($u) => [$u->id_cuenta, $u->nombre_cuenta, $u->unidad, $u->impresiones, $u->copias, $u->escaneos, $q($u->costo_total)])->all();
+        $unidades = $cuentas->porUnidad()->map(fn ($u) => [$u->unidad, $u->usuarios, $u->impresiones, $u->copias, $u->escaneos, $q($u->costo_total), $u->porcentaje.'%'])->all();
+
         $r = (new Contrato)->resumen();
         Mail::to($correos)->send(new ReporteConsumo(
             $titulo,
@@ -75,6 +82,8 @@ class EnviarReporte extends Command
             $dias,
             $r['bolson'] ? sprintf('Contrato %s: acumulado %s de %s páginas (%s%%), disponibles %s.',
                 $r['contrato'], number_format($r['acumulado']), number_format($r['bolson']), $r['porcentaje'], number_format($r['disponible'])) : null,
+            $usuarios,
+            $unidades,
         ));
         $this->info("{$titulo}: enviado a ".implode(', ', $correos));
 

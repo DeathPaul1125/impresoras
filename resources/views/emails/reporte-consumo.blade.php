@@ -24,6 +24,24 @@
         </tbody>
     </table>
 
+    @foreach ([['Usuarios con mayor consumo', ['Clave', 'Usuario', 'Unidad', 'Impresiones', 'Copias', 'Escaneos', 'Costo'], $usuarios], ['Consumo por unidad', ['Unidad', 'Usuarios', 'Impresiones', 'Copias', 'Escaneos', 'Costo', '%'], $unidades]] as [$tituloTabla, $enc, $filas])
+        @if ($filas)
+            <h3 style="color: #0d2149; margin: 24px 0 8px;">{{ $tituloTabla }}</h3>
+            <table cellpadding="6" cellspacing="0" style="border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: #0d2149; color: #fff;">
+                        @foreach ($enc as $h) <th style="{{ $th }}">{{ $h }}</th> @endforeach
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($filas as $r)
+                        <tr>@foreach ($r as $v) {!! $celda($v) !!} @endforeach</tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
+    @endforeach
+
     @if ($dias)
         <h3 style="color: #0d2149; margin: 24px 0 8px;">Consumo por día</h3>
         <table cellpadding="6" cellspacing="0" style="border-collapse: collapse; font-size: 13px;">

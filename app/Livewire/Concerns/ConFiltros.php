@@ -4,6 +4,7 @@ namespace App\Livewire\Concerns;
 
 use App\Models\Dispositivo;
 use App\Models\Modelo;
+use App\Models\Unidad;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Url;
 
@@ -26,6 +27,10 @@ trait ConFiltros
     #[Url]
     public string $modelo = '';
 
+    /** Unidad organizativa (DAB, DAF...): filtra el consumo por usuario. */
+    #[Url]
+    public string $unidad = '';
+
     public function inicializarFiltros(): void
     {
         if ($this->fecha_inicio === '') {
@@ -44,12 +49,13 @@ trait ConFiltros
             'fecha_fin' => $this->fecha_fin,
             'dispositivo' => $this->dispositivo,
             'modelo' => $this->modelo,
+            'unidad' => $this->unidad,
         ];
     }
 
     public function limpiarFiltros(): void
     {
-        $this->reset(['dispositivo', 'modelo']);
+        $this->reset(['dispositivo', 'modelo', 'unidad']);
         $this->fecha_inicio = Carbon::today()->subDays(30)->toDateString();
         $this->fecha_fin = Carbon::today()->toDateString();
     }
@@ -60,6 +66,7 @@ trait ConFiltros
         return [
             'dispositivos' => Dispositivo::orderBy('ubicacion')->get(['id', 'ubicacion', 'nombre_host', 'direccion_ip']),
             'modelos' => Modelo::orderBy('nombre')->get(['id', 'nombre']),
+            'unidades' => Unidad::orderBy('codigo')->get(['codigo', 'nombre']),
         ];
     }
 }

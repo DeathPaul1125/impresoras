@@ -91,7 +91,7 @@
                             @if ($tag)
                                 <span class="ms-auto bg-marino text-amber-300 font-bold px-3 py-1.5 whitespace-nowrap">{{ $tag }}</span>
                             @else
-                                <span class="ms-auto px-3 whitespace-nowrap text-xs">{{ $q($e->costo_total) }}</span>
+                                <span class="ms-auto px-3 whitespace-nowrap text-xs">{!! $e->prom_usuario ? 'Prom. usuario: <b>'.number_format($e->prom_usuario).'</b>' : e($q($e->costo_total)) !!}</span>
                             @endif
                         </div>
                     @endforeach
@@ -115,6 +115,71 @@
             <p class="text-center text-sm text-gray-600 pb-6">Aún no hay consumo en este rango: se necesitan al menos dos lecturas diarias (6 pm).</p>
         @endif
     </div>
+
+    {{-- Consumo por usuario y por unidad (contabilidad de trabajos de las impresoras) --}}
+    @if (! $hayCuentas)
+        <div class="mb-6 rounded-xl bg-white shadow-hoja px-5 py-4 text-sm text-tinta-2 flex gap-3">
+            <i class="fas fa-user-clock text-tinta-3 mt-0.5"></i>
+            <span>El consumo por usuario se calcula entre dos lecturas de las cuentas (todos los días a las 6:02 pm). Aparecerá aquí después de la segunda lectura del rango elegido.</span>
+        </div>
+    @else
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6 items-start">
+            <x-tabla-seccion titulo="Consumo por usuario ({{ $usuarios->count() }})" descripcion="Por clave de la contabilidad de trabajos; incluye todas las impresoras."
+                             :export="$excel('usuarios')" :pdf="$pdf('usuarios')" class="xl:col-span-2 !mb-0">
+                <div class="max-h-[560px] overflow-y-auto">
+                    <table class="min-w-full divide-y divide-linea text-sm">
+                        <thead class="sticky top-0">
+                            <tr>
+                                <th class="px-4 py-2 text-left">Clave</th>
+                                <th class="px-4 py-2 text-left">Usuario</th>
+                                <th class="px-3 py-2 text-left">Unidad</th>
+                                <th class="px-3 py-2 text-right">Impresiones</th>
+                                <th class="px-3 py-2 text-right">Copias</th>
+                                <th class="px-3 py-2 text-right">Escaneos</th>
+                                <th class="px-4 py-2 text-right">Costo</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            @foreach ($usuarios as $u)
+                                <tr class="hover:bg-papel/70">
+                                    <td class="px-4 py-1.5 cifra text-tinta-3">{{ $u->id_cuenta }}</td>
+                                    <td class="px-4 py-1.5 font-medium text-tinta">{{ $u->nombre_cuenta }}</td>
+                                    <td class="px-3 py-1.5">{{ $u->unidad }}</td>
+                                    <td class="px-3 py-1.5 text-right">{{ $n($u->impresiones) }}</td>
+                                    <td class="px-3 py-1.5 text-right">{{ $n($u->copias) }}</td>
+                                    <td class="px-3 py-1.5 text-right">{{ $n($u->escaneos) }}</td>
+                                    <td class="px-4 py-1.5 text-right font-semibold text-tinta">{{ $q($u->costo_total) }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </x-tabla-seccion>
+
+            <x-tabla-seccion titulo="Consumo por unidad" :export="$excel('unidades')" :pdf="$pdf('unidades')" class="!mb-0">
+                <table class="min-w-full divide-y divide-linea text-sm">
+                    <thead>
+                        <tr><th class="px-4 py-2 text-left">Unidad</th><th class="px-3 py-2 text-right">Usuarios</th><th class="px-3 py-2 text-right">Costo</th><th class="px-4 py-2 text-right">%</th></tr>
+                    </thead>
+                    <tbody class="divide-y">
+                        @foreach ($unidadesConsumo as $u)
+                            <tr class="hover:bg-papel/70">
+                                <td class="px-4 py-1.5"><b class="text-tinta">{{ $u->unidad }}</b> <span class="text-xs text-tinta-3">{{ $u->unidad_nombre }}</span></td>
+                                <td class="px-3 py-1.5 text-right">{{ $u->usuarios }}</td>
+                                <td class="px-3 py-1.5 text-right font-semibold text-tinta">{{ $q($u->costo_total) }}</td>
+                                <td class="px-4 py-1.5 text-right">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <span class="h-1.5 w-14 rounded-full bg-papel overflow-hidden"><span class="block h-full bg-marino-600" style="width: {{ $u->porcentaje }}%"></span></span>
+                                        {{ $u->porcentaje }}%
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </x-tabla-seccion>
+        </div>
+    @endif
 
     {{-- Páginas por día e impresora --}}
     <div class="bg-white rounded-xl shadow-hoja p-5 mb-6">

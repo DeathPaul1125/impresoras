@@ -28,6 +28,9 @@ class RegistrarCorte extends Command
             Log::warning('impresoras:corte sin respuesta de: '.implode(', ', $fallas));
         }
 
+        // Foto por cuenta en el momento del corte, para el consumo por usuario del período.
+        $this->call('impresoras:leer-cuentas');
+
         return self::SUCCESS;
     }
 }

@@ -47,6 +47,12 @@ class ConfiguracionPrecio extends Component
 
     public string $smtp_from_name = '';
 
+    // Panel web (Command Center) de las impresoras: lectura de cuentas y respaldo de SNMP.
+    public string $panel_usuario = 'Admin';
+
+    /** Vacío = conservar la guardada. */
+    public string $panel_password = '';
+
     public function mount(): void
     {
         $this->precio_unitario = Configuracion::precioUnitario();
@@ -58,6 +64,8 @@ class ConfiguracionPrecio extends Component
         $this->contrato_fin = (string) $c['fin'];
         $this->contrato_dia_corte = (int) $c['dia_corte'];
         $this->correos_reportes = implode(', ', Configuracion::correosReportes());
+
+        $this->panel_usuario = Configuracion::panelImpresoras()['usuario'];
 
         $s = Configuracion::smtp();
         $this->smtp_host = (string) $s['host'];
@@ -121,6 +129,15 @@ class ConfiguracionPrecio extends Component
         $this->correos_reportes = implode(', ', $correos);
 
         session()->flash('ok', $correos ? 'Los reportes se enviarán a: '.$this->correos_reportes.'.' : 'Reportes desactivados (sin destinatarios).');
+    }
+
+    public function guardarPanel(): void
+    {
+        $this->validate(['panel_usuario' => 'required|string|max:64', 'panel_password' => 'nullable|string|max:64'], [], ['panel_usuario' => 'usuario']);
+
+        Configuracion::setPanelImpresoras(trim($this->panel_usuario), $this->panel_password !== '' ? $this->panel_password : null);
+        $this->panel_password = '';
+        session()->flash('ok', 'Acceso al panel de las impresoras guardado.');
     }
 
     public function guardarSmtp(): void

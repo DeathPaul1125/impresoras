@@ -1,6 +1,6 @@
 @props(['titulo', 'export' => null, 'pdf' => null, 'descripcion' => null])
 
-<section class="bg-white rounded-xl shadow-hoja overflow-hidden mb-6">
+<section {{ $attributes->merge(['class' => 'bg-white rounded-xl shadow-hoja overflow-hidden mb-6']) }}>
     <header class="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 border-b border-linea">
         <div>
             <h2 class="text-sm font-semibold text-tinta">{{ $titulo }}</h2>

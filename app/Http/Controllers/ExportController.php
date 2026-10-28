@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\ConsumoExport;
 use App\Exports\ControlContadoresExport;
 use App\Support\Consumo;
+use App\Support\ConsumoCuentas;
 use App\Support\Contrato;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ExportController extends Controller
 {
-    private const TIPOS = ['dispositivos', 'diario', 'tendencias'];
+    private const TIPOS = ['dispositivos', 'diario', 'tendencias', 'usuarios', 'unidades'];
 
     public function excel(Request $request, string $tipo): Response
     {
@@ -59,7 +60,7 @@ class ExportController extends Controller
 
     private function filtros(Request $request): array
     {
-        return $request->only(['fecha_inicio', 'fecha_fin', 'dispositivo', 'modelo']);
+        return $request->only(['fecha_inicio', 'fecha_fin', 'dispositivo', 'modelo', 'unidad']);
     }
 
     private function filtrosLegibles(Request $request): string
@@ -90,6 +91,20 @@ class ExportController extends Controller
                 ])->all(),
             ],
             'diario' => $this->diario($consumo, $q),
+            'usuarios' => [
+                'titulo' => 'Consumo por usuario',
+                'headings' => ['Clave', 'Usuario', 'Unidad', 'Impresiones', 'Copias', 'Escaneos', 'Costo'],
+                'rows' => (new ConsumoCuentas($this->filtros($request)))->porUsuario()->map(fn ($r) => [
+                    $r->id_cuenta, $r->nombre_cuenta, $r->unidad, $n($r->impresiones), $n($r->copias), $n($r->escaneos), $q($r->costo_total),
+                ])->all(),
+            ],
+            'unidades' => [
+                'titulo' => 'Consumo por unidad',
+                'headings' => ['Unidad', 'Nombre', 'Usuarios', 'Impresiones', 'Copias', 'Escaneos', 'Costo', '%'],
+                'rows' => (new ConsumoCuentas($this->filtros($request)))->porUnidad()->map(fn ($r) => [
+                    $r->unidad, $r->unidad_nombre, $r->usuarios, $n($r->impresiones), $n($r->copias), $n($r->escaneos), $q($r->costo_total), $r->porcentaje.'%',
+                ])->all(),
+            ],
             'tendencias' => [
                 'titulo' => 'Tendencias de Consumo Mensual',
                 'headings' => ['Período', 'Días', 'Impresiones', 'Copias', 'Escaneos', 'Costo Total', 'Variación %'],

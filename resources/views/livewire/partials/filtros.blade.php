@@ -3,7 +3,7 @@
     $ctrl = 'block w-full py-2 px-3 rounded-lg border-0 bg-papel ring-1 ring-inset ring-linea text-sm text-tinta focus:ring-2 focus:ring-marino-600';
 @endphp
 <form wire:submit="filtrar" class="bg-white rounded-xl shadow-hoja p-4 mb-6">
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio</label>
             <input type="date" wire:model="fecha_inicio" class="{{ $ctrl }}">
@@ -18,6 +18,15 @@
                 <option value="">Todas</option>
                 @foreach ($opciones['dispositivos'] as $d)
                     <option value="{{ $d->id }}">{{ $d->ubicacion ?? $d->nombre_host }} ({{ $d->direccion_ip }})</option>
+                @endforeach
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Unidad <span class="text-xs font-normal text-tinta-3">(usuarios)</span></label>
+            <select wire:model="unidad" class="{{ $ctrl }}">
+                <option value="">Todas</option>
+                @foreach ($opciones['unidades'] ?? [] as $u)
+                    <option value="{{ $u->codigo }}">{{ $u->codigo }} · {{ $u->nombre }}</option>
                 @endforeach
             </select>
         </div>

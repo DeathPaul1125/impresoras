@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Support\ConsumoCuentas;
 use App\Support\Contrato;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithEvents;
@@ -31,6 +32,9 @@ class ControlContadoresExport implements WithMultipleSheets
     public function sheets(): array
     {
         $hojas = [$this->hoja('Control Copias e Impresiones', $this->resumen(), 6)];
+        if ($ultimo = $this->r['periodos']->last()) {
+            $hojas[] = $this->hoja('Consumo por usuario', $this->usuarios($ultimo), 6);
+        }
         foreach ($this->r['periodos']->reverse() as $p) {
             $hojas[] = $this->hoja(mb_substr($p->etiqueta, 0, 31), $this->corte($p), 6);
         }
@@ -87,6 +91,26 @@ class ControlContadoresExport implements WithMultipleSheets
                 $filas[] = ['⚠ '.$a];
             }
         }
+
+        return $filas;
+    }
+
+    /** Consumo por cuenta (clave) del último período: de corte a corte, según la contabilidad de trabajos. */
+    private function usuarios(object $p): array
+    {
+        $usuarios = (new ConsumoCuentas(['desde' => $p->desde, 'hasta' => $p->fecha]))->porUsuario();
+        $filas = [
+            ['CONSUMO POR USUARIO · CORTE '.mb_strtoupper($p->etiqueta)],
+            ['Del '.$p->desde->format('d/m/Y H:i').' al '.$p->fecha->format('d/m/Y H:i').' · contabilidad de trabajos de las impresoras'],
+            ['Usuarios con consumo:', $usuarios->count(), 'Costo total:', round((float) $usuarios->sum('costo_total'), 2)],
+            [''],
+            [''],
+            ['Clave', 'Usuario', 'Unidad', 'Impresiones', 'Copias', 'Escaneos', 'Costo (Q)'],
+        ];
+        foreach ($usuarios as $u) {
+            $filas[] = [$u->id_cuenta, $u->nombre_cuenta, $u->unidad, $u->impresiones, $u->copias, $u->escaneos, round($u->costo_total, 2)];
+        }
+        $filas[] = ['Totales', '', '', $usuarios->sum('impresiones'), $usuarios->sum('copias'), $usuarios->sum('escaneos'), round((float) $usuarios->sum('costo_total'), 2)];
 
         return $filas;
     }

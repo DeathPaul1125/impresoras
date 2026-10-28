@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Livewire\Concerns\ConFiltros;
 use App\Support\Consumo;
+use App\Support\ConsumoCuentas;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -62,6 +63,7 @@ class Tablero extends Component
         if ($con->isEmpty()) {
             return [];
         }
+        $intenso = $con->filter(fn ($e) => $e->prom_usuario)->sortByDesc('prom_usuario')->first();
         $k = fn ($v) => $v >= 1000 ? round($v / 1000).'k' : number_format($v);
         $top = $con->first();
         $escaneo = $con->sortByDesc(fn ($e) => $e->escaneos / max(1, $e->bn))->first();
@@ -72,7 +74,9 @@ class Tablero extends Component
             ['Punto de flujo crítico', "{$top->ubicacion} lidera con {$k($top->bn)} páginas B/N ({$k($top->impresiones)} impresiones, {$k($top->copias)} copias) y {$k($top->escaneos)} escaneos."],
             ['Foco en escaneo', "{$escaneo->ubicacion} escanea ".round($escaneo->escaneos / max(1, $escaneo->bn), 1).' páginas por cada página impresa o copiada.'],
             ['Oportunidad de balance', "{$bajo->ubicacion} es el equipo menos usado en papel ({$k($bajo->bn)}); puede absorber carga de {$top->ubicacion}."],
-            ['Mayor uso como copiadora', "En {$copias->ubicacion} el ".round($copias->copias / max(1, $copias->bn) * 100).'% del papel son copias.'],
+            $intenso
+                ? ['Intensidad de usuario', "{$intenso->ubicacion} tiene el mayor promedio: ".number_format($intenso->prom_usuario).' páginas B/N por usuario.']
+                : ['Mayor uso como copiadora', "En {$copias->ubicacion} el ".round($copias->copias / max(1, $copias->bn) * 100).'% del papel son copias.'],
         ];
     }
 
@@ -91,13 +95,21 @@ class Tablero extends Component
         $columnas = $consumo->dispositivos();   // orden fijo por ubicación para la tabla día × impresora
 
         $impresoras = $consumo->porDispositivo($this->sort_field, $this->sort_order);
-        $equipos = $impresoras->each(fn ($r) => $r->bn = $r->impresiones + $r->copias)->sortByDesc('bn')->values();
+        $cuentas = new ConsumoCuentas($this->filtros());
+        $promedios = $cuentas->promedioPorUsuario();
+        $equipos = $impresoras->each(function ($r) use ($promedios) {
+            $r->bn = $r->impresiones + $r->copias;
+            $r->prom_usuario = $promedios[$r->id] ?? null;
+        })->sortByDesc('bn')->values();
 
         return view('livewire.tablero', [
             'totales' => $consumo->totales(),
             'impresoras' => $impresoras,
             'equipos' => $equipos,
             'hallazgos' => $this->hallazgos($equipos),
+            'usuarios' => $cuentas->porUsuario(),
+            'unidadesConsumo' => $cuentas->porUnidad(),
+            'hayCuentas' => $cuentas->hayDatos(),
             'porDia' => $porDia,
             'matriz' => $matriz,
             'columnas' => $columnas,

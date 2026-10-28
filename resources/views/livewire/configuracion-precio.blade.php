@@ -73,8 +73,8 @@
                 <h2 class="text-sm font-semibold text-tinta">Reportes por correo</h2>
                 <p class="text-sm text-tinta-3 mt-1">Quiénes reciben los reportes automáticos.</p>
                 <ul class="mt-3 space-y-1.5 text-xs text-tinta-2">
-                    <li><i class="fas fa-sun w-4 text-tinta-4"></i> Diario · 6:05 pm</li>
-                    <li><i class="fas fa-calendar-week w-4 text-tinta-4"></i> Viernes · 6:05 pm (lunes a viernes)</li>
+                    <li><i class="fas fa-sun w-4 text-tinta-4"></i> Diario · 6:15 pm</li>
+                    <li><i class="fas fa-calendar-week w-4 text-tinta-4"></i> Viernes · 6:15 pm (lunes a viernes)</li>
                     <li><i class="fas fa-scissors w-4 text-tinta-4"></i> Corte · día {{ $contrato_dia_corte }}, 00:10 (con Excel y PDF)</li>
                 </ul>
             </div>
@@ -84,6 +84,27 @@
                 </x-campo>
                 <div class="mt-5 flex justify-end">
                     <x-primary-button wire:click="guardarCorreos" type="button">Guardar destinatarios</x-primary-button>
+                </div>
+            </x-panel>
+        </div>
+
+        {{-- Panel web de las impresoras --}}
+        <div class="{{ $seccion }}">
+            <div>
+                <h2 class="text-sm font-semibold text-tinta">Panel web de las impresoras</h2>
+                <p class="text-sm text-tinta-3 mt-1">Usuario administrador del Command Center de las Kyocera. Se usa para leer el consumo por clave (contabilidad de trabajos) y como respaldo cuando SNMP no responde. Solo lee: no cambia nada en las impresoras.</p>
+            </div>
+            <x-panel class="lg:col-span-2">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <x-campo label="Usuario" nombre="panel_usuario">
+                        <input type="text" wire:model="panel_usuario" autocomplete="off" class="{{ $ctrl }}">
+                    </x-campo>
+                    <x-campo label="Contraseña" nombre="panel_password" ayuda="Vacía = se conserva la guardada (por defecto, la de fábrica).">
+                        <input type="password" wire:model="panel_password" autocomplete="new-password" placeholder="••••••••" class="{{ $ctrl }}">
+                    </x-campo>
+                </div>
+                <div class="mt-5 flex justify-end">
+                    <x-primary-button wire:click="guardarPanel" type="button">Guardar acceso</x-primary-button>
                 </div>
             </x-panel>
         </div>

@@ -47,6 +47,26 @@
         </tr>
     </table>
 
+    @if ($unidades)
+        <h3 style="color: #0d2149; margin: 20px 0 6px;">Consumo por unidad (contabilidad de trabajos)</h3>
+        <table cellspacing="0" style="border-collapse: collapse; font-size: 13px;">
+            <tr style="background: #0d2149; color: #fff;">
+                <th style="{{ $th }}">Unidad</th><th style="{{ $th }}">Usuarios</th><th style="{{ $th }}">Impresiones</th><th style="{{ $th }}">Copias</th><th style="{{ $th }}">Costo</th><th style="{{ $th }}">%</th>
+            </tr>
+            @foreach ($unidades as $u)
+                <tr>
+                    <td style="{{ $td }}"><b>{{ $u->unidad }}</b> {{ $u->unidad_nombre }}</td>
+                    <td style="{{ $td }} text-align: right;">{{ $u->usuarios }}</td>
+                    <td style="{{ $td }} text-align: right;">{{ $n($u->impresiones) }}</td>
+                    <td style="{{ $td }} text-align: right;">{{ $n($u->copias) }}</td>
+                    <td style="{{ $td }} text-align: right;">Q{{ number_format($u->costo_total, 2) }}</td>
+                    <td style="{{ $td }} text-align: right;">{{ $u->porcentaje }}%</td>
+                </tr>
+            @endforeach
+        </table>
+        <p style="color: #6b7280; font-size: 12px;">El detalle por usuario va en la hoja «Consumo por usuario» del Excel adjunto.</p>
+    @endif
+
     @if ($hallazgos)
         <h3 style="color: #0d2149; margin: 20px 0 6px;">Hallazgos</h3>
         <ul style="padding-left: 18px;">

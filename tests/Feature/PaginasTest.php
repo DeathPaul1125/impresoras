@@ -71,7 +71,7 @@ class PaginasTest extends TestCase
             $this->get("/export/{$tipo}")->assertOk()->assertDownload();
             $this->get("/export/pdf/{$tipo}")->assertOk()->assertDownload();
         }
-        $this->get('/export/usuarios')->assertNotFound();
+        $this->get('/export/no-existe')->assertNotFound();
     }
 
     public function test_configuracion_guarda_precio_y_correos(): void

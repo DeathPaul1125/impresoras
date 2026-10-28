@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\ContadorEquipo;
 use App\Models\Dispositivo;
-use App\Support\Snmp;
+use App\Support\Lector;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -20,7 +20,7 @@ class LeerSnmp extends Command
         $fallas = [];
 
         foreach (Dispositivo::whereNotNull('direccion_ip')->get() as $d) {
-            $l = Snmp::leer($d->direccion_ip);
+            $l = Lector::leer($d->direccion_ip);
             if (! $l) {
                 $fallas[] = "{$d->ubicacion} ({$d->direccion_ip})";
                 $this->error("{$d->ubicacion} ({$d->direccion_ip}): sin respuesta");

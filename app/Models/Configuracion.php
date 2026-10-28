@@ -40,6 +40,26 @@ class Configuracion extends Model
         static::updateOrCreate(['clave' => 'contrato'], ['valor' => json_encode($contrato)]);
     }
 
+    /** Usuario administrador del panel web (Command Center) de las impresoras. Contraseña cifrada; por defecto el de fábrica. */
+    public static function panelImpresoras(): array
+    {
+        $p = json_decode((string) static::find('panel_impresoras')?->valor, true) ?: [];
+
+        return [
+            'usuario' => ($p['usuario'] ?? '') ?: 'Admin',
+            'password' => isset($p['password']) ? Crypt::decryptString($p['password']) : 'Admin',
+        ];
+    }
+
+    public static function setPanelImpresoras(string $usuario, ?string $password): void
+    {
+        $actual = json_decode((string) static::find('panel_impresoras')?->valor, true) ?: [];
+        static::updateOrCreate(['clave' => 'panel_impresoras'], ['valor' => json_encode([
+            'usuario' => $usuario,
+            'password' => filled($password) ? Crypt::encryptString($password) : ($actual['password'] ?? null),
+        ])]);
+    }
+
     /** @return string[] destinatarios de los reportes programados. */
     public static function correosReportes(): array
     {

@@ -250,7 +250,7 @@ class Contrato
             // ponytail: reintentos simples; a veces una impresora no responde al primer intento (ahorro de energía).
             $l = null;
             for ($i = 1; $i <= $intentos && ! $l; $i++) {
-                $l = Snmp::leer($d->direccion_ip);
+                $l = Lector::leer($d->direccion_ip);
                 if (! $l && $i < $intentos) {
                     sleep(5);
                 }

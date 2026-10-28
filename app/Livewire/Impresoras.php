@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Dispositivo;
 use App\Models\Modelo;
+use App\Support\Lector;
 use App\Support\Snmp;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -91,7 +92,7 @@ class Impresoras extends Component
     public function leer(int $id): void
     {
         $d = Dispositivo::findOrFail($id);
-        $lectura = $d->direccion_ip ? Snmp::leer($d->direccion_ip) : null;
+        $lectura = $d->direccion_ip ? Lector::leer($d->direccion_ip) : null;
         $this->contadores[$id] = $lectura ?: false;
 
         // De paso completa serie/modelo si faltaban.
