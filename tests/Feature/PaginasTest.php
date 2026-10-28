@@ -35,7 +35,7 @@ class PaginasTest extends TestCase
 
         Livewire::test(Tablero::class)
             ->assertOk()
-            ->assertSee('Panel de Consumo')
+            ->assertSee('Análisis de consumo')
             ->assertSee('SG 9o.')
             ->assertSee('Q973.25')
             ->assertSee('Consumo Diario');
@@ -47,8 +47,8 @@ class PaginasTest extends TestCase
 
         Livewire::test(DashboardGeneral::class)
             ->assertOk()
-            ->assertSee('Dashboard General')
-            ->assertSee('Q973.25');
+            ->assertSee('CONSUMO DE COPIAS E IMPRESIONES')
+            ->assertSee('SG 9o.');
     }
 
     public function test_ordenar_cambia_campo(): void
@@ -139,6 +139,8 @@ class PaginasTest extends TestCase
         $consulta = User::create(['name' => 'C', 'email' => 'c@c.com', 'password' => bcrypt('x'), 'role' => 'consulta']);
 
         $this->actingAs($consulta)->get('/configuracion')->assertForbidden();
+        $this->actingAs($consulta)->get('/cortes')->assertForbidden();
+        $this->actingAs($consulta)->get('/dashboard')->assertOk();
         $this->actingAs($consulta)->get('/tablero')->assertOk();
         $this->get('/')->assertOk();
     }

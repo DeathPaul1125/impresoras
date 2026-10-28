@@ -13,8 +13,8 @@
 <div class="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex flex-wrap items-end justify-between gap-3 mb-6">
         <div>
-            <h1 class="text-2xl font-bold text-gray-800">Panel de Consumo</h1>
-            <p class="text-sm text-gray-500">Servicios de impresión y fotocopiado · SENABED · lecturas diarias de las 6 pm</p>
+            <h1 class="text-2xl font-semibold tracking-tight text-tinta">Análisis de consumo</h1>
+            <p class="text-sm text-tinta-3">Impresiones, copias y escaneos por equipo en el rango elegido · según las lecturas diarias de las 6 pm</p>
         </div>
         <span class="inline-flex items-center gap-2 py-1.5 px-3 rounded-full bg-white border border-gray-200 text-xs text-gray-600 shadow-sm">
             <i class="fas fa-calendar-day text-gray-400"></i>
@@ -33,13 +33,13 @@
 
     {{-- Infografía: Consumo de multifuncionales monocromáticas --}}
     <div class="rounded-2xl bg-gradient-to-b from-blue-50 to-sky-100 border border-blue-100 shadow-sm overflow-hidden mb-8">
-        <div class="bg-[#0d2149] text-white text-center font-bold tracking-wide py-2 uppercase">Datos de consumo y operación de multifuncionales</div>
+        <div class="bg-marino text-white text-center font-bold tracking-wide py-2 uppercase">Datos de consumo y operación de multifuncionales</div>
         <div class="text-center pt-5 px-4">
-            <h2 class="text-2xl md:text-3xl font-extrabold text-[#0d2149] uppercase">Consumo de multifuncionales monocromáticas</h2>
+            <h2 class="text-2xl md:text-3xl font-extrabold text-marino uppercase">Consumo de multifuncionales monocromáticas</h2>
             <p class="text-gray-700 font-semibold">Análisis de copias, impresiones y escaneos · {{ \Illuminate\Support\Carbon::parse($fecha_inicio)->format('d/m/Y') }} – {{ \Illuminate\Support\Carbon::parse($fecha_fin)->format('d/m/Y') }}</p>
         </div>
 
-        <h3 class="mt-5 text-center font-extrabold text-[#0d2149] uppercase"><i class="fas fa-arrow-right text-sky-500 me-2"></i>Totales del parque</h3>
+        <h3 class="mt-5 text-center font-extrabold text-marino uppercase"><i class="fas fa-arrow-right text-sky-500 me-2"></i>Totales del parque</h3>
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 px-6 py-4">
             @foreach ([
                 ['Total impresiones', $k($totales['impresiones']), 'fa-print'],
@@ -48,8 +48,8 @@
                 ['Costo aprox.', $q($totales['costo_total']), 'fa-coins'],
             ] as [$titulo, $valor, $icono])
                 <div class="flex items-center justify-center">
-                    <span class="z-10 -me-4 inline-flex items-center justify-center size-16 rounded-full bg-[#0d2149] text-sky-400 text-2xl"><i class="fas {{ $icono }}"></i></span>
-                    <div class="size-32 rounded-full bg-[#0d2149] text-white flex flex-col items-center justify-center text-center">
+                    <span class="z-10 -me-4 inline-flex items-center justify-center size-16 rounded-full bg-marino text-sky-400 text-2xl"><i class="fas {{ $icono }}"></i></span>
+                    <div class="size-32 rounded-full bg-marino text-white flex flex-col items-center justify-center text-center">
                         <span class="text-xs">{{ $titulo }}:</span>
                         <span class="text-2xl font-extrabold">{{ $valor }}</span>
                     </div>
@@ -59,37 +59,37 @@
 
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 px-6 pb-6">
             <div>
-                <h3 class="font-extrabold text-[#0d2149] uppercase"><i class="fas fa-arrow-right text-sky-500 me-2"></i>Comparativa por equipo (impresiones + copias)</h3>
+                <h3 class="font-extrabold text-marino uppercase"><i class="fas fa-arrow-right text-sky-500 me-2"></i>Comparativa por equipo (impresiones + copias)</h3>
                 <div class="mt-3 space-y-2">
                     @foreach ($equipos as $i => $e)
                         @php [$nivel, $clase] = \App\Livewire\Tablero::nivel($e->bn, $maxBn); @endphp
                         <div class="flex items-center gap-2">
                             <span class="w-24 shrink-0 text-sm font-semibold text-gray-800 truncate">{{ $e->ubicacion }}</span>
                             <div class="flex-1 flex items-center gap-2">
-                                <div class="h-7 rounded-e-lg {{ $i % 2 ? 'bg-[#0d2149]' : 'bg-sky-500' }} flex items-center justify-end pe-2 text-white text-xs font-bold"
+                                <div class="h-7 rounded-e-lg {{ $i % 2 ? 'bg-marino' : 'bg-sky-500' }} flex items-center justify-end pe-2 text-white text-xs font-bold"
                                      style="width: {{ max(2, round($e->bn / $maxBn * 100)) }}%">{{ $e->bn / $maxBn > 0.25 ? number_format($e->bn) : '' }}</div>
                                 @if ($e->bn / $maxBn <= 0.25) <span class="text-xs font-bold text-gray-800">{{ number_format($e->bn) }}</span> @endif
                             </div>
-                            <span class="w-24 shrink-0 text-center rounded-full bg-[#0d2149] py-1 text-[11px] font-extrabold {{ $clase }}">{{ $nivel }}</span>
+                            <span class="w-24 shrink-0 text-center rounded-full bg-marino py-1 text-[11px] font-extrabold {{ $clase }}">{{ $nivel }}</span>
                         </div>
                     @endforeach
                 </div>
             </div>
 
             <div>
-                <h3 class="font-extrabold text-[#0d2149] uppercase"><i class="fas fa-arrow-right text-sky-500 me-2"></i>Datos operativos clave</h3>
+                <h3 class="font-extrabold text-marino uppercase"><i class="fas fa-arrow-right text-sky-500 me-2"></i>Datos operativos clave</h3>
                 <div class="mt-3 space-y-2">
                     @foreach ($equipos->sortBy('nivel')->values() as $e)
                         @php
                             $tag = $topBn && $e->id === $topBn->id && $e->bn > 0 ? 'Mayor uso general' : ($topEsc && $e->id === $topEsc->id && $e->escaneos > 0 ? 'Foco en escaneo' : null);
                         @endphp
                         <div class="flex items-center rounded-full {{ $tag ? 'bg-sky-500 text-white' : 'bg-sky-200/70 text-gray-900' }} text-sm overflow-hidden">
-                            <span class="shrink-0 bg-[#0d2149] text-white font-extrabold px-3 py-1.5 w-24 text-center truncate">{{ $e->ubicacion }}</span>
+                            <span class="shrink-0 bg-marino text-white font-extrabold px-3 py-1.5 w-24 text-center truncate">{{ $e->ubicacion }}</span>
                             <span class="px-3 whitespace-nowrap">Imp. <b>{{ number_format($e->impresiones) }}</b></span>
                             <span class="px-3 border-s border-current/30 whitespace-nowrap">Cop. <b>{{ number_format($e->copias) }}</b></span>
                             <span class="px-3 border-s border-current/30 whitespace-nowrap">Esc. <b>{{ number_format($e->escaneos) }}</b></span>
                             @if ($tag)
-                                <span class="ms-auto bg-[#0d2149] text-amber-300 font-bold px-3 py-1.5 whitespace-nowrap">{{ $tag }}</span>
+                                <span class="ms-auto bg-marino text-amber-300 font-bold px-3 py-1.5 whitespace-nowrap">{{ $tag }}</span>
                             @else
                                 <span class="ms-auto px-3 whitespace-nowrap text-xs">{{ $q($e->costo_total) }}</span>
                             @endif
@@ -101,7 +101,7 @@
 
         @if ($hallazgos)
             <div class="bg-white/60 px-6 py-5">
-                <h3 class="text-center font-extrabold text-[#0d2149] uppercase mb-3">Hallazgos clave</h3>
+                <h3 class="text-center font-extrabold text-marino uppercase mb-3">Hallazgos clave</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 xl:divide-x divide-sky-400">
                     @foreach ($hallazgos as [$titulo, $texto])
                         <div class="text-center px-3">
@@ -116,16 +116,11 @@
         @endif
     </div>
 
-    {{-- Gráficas --}}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <div class="lg:col-span-2 bg-white border border-gray-200 rounded-2xl shadow-sm p-4">
-            <h2 class="text-sm font-semibold text-gray-700 mb-2">Páginas por Día e Impresora</h2>
-            @include('livewire.partials.grafica', ['key' => 'dias', 'tipo' => 'bar', 'label' => 'Páginas', 'labels' => $graficas['dias']['labels'], 'series' => $graficas['dias']['series'], 'moneda' => false, 'firma' => $firma])
-        </div>
-        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-4">
-            <h2 class="text-sm font-semibold text-gray-700 mb-2">Tendencia Mensual (costo)</h2>
-            @include('livewire.partials.grafica', ['key' => 'tendencias', 'tipo' => 'line', 'label' => 'Costo Q', 'labels' => $graficas['tendencias']['labels'], 'datos' => $graficas['tendencias']['data'], 'firma' => $firma])
-        </div>
+    {{-- Páginas por día e impresora --}}
+    <div class="bg-white rounded-xl shadow-hoja p-5 mb-6">
+        <h2 class="text-sm font-semibold text-tinta">Páginas por día e impresora</h2>
+        <p class="text-xs text-tinta-3 mb-3">Cada barra es un día (lectura de las 6 pm menos la del día anterior).</p>
+        @include('livewire.partials.grafica', ['key' => 'dias', 'tipo' => 'bar', 'label' => 'Páginas', 'labels' => $graficas['dias']['labels'], 'series' => $graficas['dias']['series'], 'moneda' => false, 'firma' => $firma])
     </div>
 
     {{-- Consumo por impresora (ordenable) --}}

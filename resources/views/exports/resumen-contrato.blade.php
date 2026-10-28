@@ -109,6 +109,7 @@
     </table>
 
     @if ($hallazgos)
+        <div style="page-break-inside: avoid;">
         <h2>Hallazgos principales</h2>
         <table class="hall">
             <tr>
@@ -117,6 +118,7 @@
                 @endforeach
             </tr>
         </table>
+        </div>
     @endif
 </body>
 </html>

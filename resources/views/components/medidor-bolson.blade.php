@@ -16,11 +16,14 @@
             <div class="absolute -top-1 -bottom-1 w-0.5 bg-tinta" style="left: {{ $tiempo }}%" title="Tiempo transcurrido del contrato: {{ $tiempo }}%"></div>
         @endif
     </div>
-    <div class="mt-1.5 flex justify-between text-[11px] text-tinta-3 cifra">
+    <div class="mt-1.5 flex justify-between text-xs text-tinta-3 cifra">
         <span><b class="text-tinta">{{ $r['porcentaje'] }}%</b> consumido</span>
-        @if ($tiempo !== null)
-            <span class="{{ $adelantado ? 'text-amber-700' : 'text-saldo' }}">{{ $tiempo }}% del plazo · {{ $adelantado ? 'consumo adelantado' : 'dentro del ritmo' }}</span>
-        @endif
         <span><b class="text-saldo">{{ number_format($r['disponible']) }}</b> disponibles</span>
     </div>
+    @if ($tiempo !== null)
+        <p class="mt-1 text-xs {{ $adelantado ? 'text-amber-700' : 'text-saldo' }}">
+            <i class="fas {{ $adelantado ? 'fa-gauge-high' : 'fa-gauge' }}"></i>
+            Ha pasado el {{ $tiempo }}% del plazo (línea negra): {{ $adelantado ? 'el consumo va adelantado.' : 'el consumo va dentro del ritmo.' }}
+        </p>
+    @endif
 </div>

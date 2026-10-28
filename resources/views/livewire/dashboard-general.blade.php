@@ -23,17 +23,17 @@
         ['Producido '.($ultimo ? mb_strtolower($ultimo->fecha->locale('es')->translatedFormat('F')) : ''), $ultimo ? 'corte '.$f($ultimo->fecha) : '', $n($ultimo?->total), 'Páginas del último corte', 'fa-print', 'amber'],
         ['En curso', $r['en_curso']->desde ? 'desde '.$f($r['en_curso']->desde) : '', $n($r['en_curso']->total), 'Desde el último corte', 'fa-hourglass-half', 'blue'],
     ];
-    $seccion = 'bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden';
-    $cabecera = 'bg-[#0d2149] text-white text-center px-4 py-2.5';
+    $seccion = 'bg-white rounded-xl shadow-hoja overflow-hidden';
+    $cabecera = 'bg-marino text-white text-center px-4 py-2.5';
 @endphp
 
 <div class="py-6 max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
     {{-- Encabezado --}}
-    <div class="rounded-2xl bg-gradient-to-r from-[#0d2149] via-[#123a7a] to-[#1d4ed8] text-white px-6 py-5 flex flex-wrap items-center justify-between gap-4 shadow">
+    <div class="rounded-xl bg-marino text-white px-6 py-5 flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-4">
             <i class="fas fa-print text-4xl opacity-90"></i>
             <div>
-                <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">CONSUMO DE COPIAS E IMPRESIONES</h1>
+                <h1 class="text-2xl md:text-3xl font-bold tracking-tight">CONSUMO DE COPIAS E IMPRESIONES</h1>
                 <p class="text-blue-100">Dashboard de consumo acumulado al {{ $r['corte_al']?->format('d/m/Y H:i') }} Hrs.</p>
             </div>
         </div>
@@ -56,34 +56,33 @@
         </div>
     </div>
 
-    @foreach ($r['alertas'] as $a)
-        <div class="rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 text-amber-900 text-sm flex gap-2">
-            <i class="fas fa-triangle-exclamation mt-0.5"></i><span>{{ $a }}</span>
+    @if ($r['alertas'])
+        <div class="rounded-xl bg-amber-50 ring-1 ring-inset ring-amber-300/60 px-5 py-3 text-amber-900">
+            <div class="flex items-center gap-2 text-sm font-semibold"><i class="fas fa-triangle-exclamation"></i> Pendientes de revisar ({{ count($r['alertas']) }})</div>
+            <ul class="mt-1.5 space-y-1 text-[13px] list-disc ps-6 marker:text-amber-500">
+                @foreach ($r['alertas'] as $a) <li>{{ $a }}</li> @endforeach
+            </ul>
+            @can('admin') <a href="{{ route('cortes') }}" wire:navigate class="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 hover:underline">Ir a Cortes del contrato <i class="fas fa-arrow-right"></i></a> @endcan
         </div>
-    @endforeach
+    @endif
 
     {{-- KPIs --}}
-    <div class="grid grid-cols-2 md:grid-cols-4 2xl:grid-cols-8 gap-3">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
         @foreach ($kpis as [$titulo, $sub, $valor, $pie, $icono, $color])
-            <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-3 flex flex-col">
-                <div class="text-center leading-tight min-h-[2.5rem]">
-                    <div class="text-xs font-bold uppercase {{ $titulos[$color] }}">{{ $titulo }}</div>
-                    <div class="text-[11px] font-semibold {{ $titulos[$color] }} opacity-80">{{ $sub }}</div>
-                </div>
-                <div class="flex items-center gap-3 mt-2">
-                    <span class="shrink-0 inline-flex items-center justify-center size-11 rounded-full text-white {{ $iconos[$color] }}"><i class="fas {{ $icono }}"></i></span>
-                    <div class="min-w-0">
-                        <div class="text-2xl font-extrabold {{ $titulos[$color] }} leading-none">{{ $valor }}</div>
-                        <div class="text-[11px] text-gray-500 mt-1">{{ $pie }}</div>
-                    </div>
+            <div class="bg-white rounded-xl shadow-hoja px-4 py-3.5 flex items-center gap-4">
+                <span class="shrink-0 inline-flex items-center justify-center size-12 rounded-full text-white text-lg {{ $iconos[$color] }}"><i class="fas {{ $icono }}"></i></span>
+                <div class="min-w-0">
+                    <div class="text-[11px] font-semibold uppercase tracking-wide {{ $titulos[$color] }}">{{ $titulo }} <span class="font-medium normal-case tracking-normal text-tinta-3">{{ $sub }}</span></div>
+                    <div class="cifra text-[28px] font-bold tracking-tight leading-tight {{ $titulos[$color] }}">{{ $valor }}</div>
+                    <div class="text-xs text-tinta-3">{{ $pie }}</div>
                 </div>
             </div>
         @endforeach
     </div>
 
-    {{-- Fila 2: por impresora · distribución · resumen --}}
-    <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
-        <div class="xl:col-span-5 {{ $seccion }}">
+    {{-- Fila 2: por impresora · distribución · resumen (en pantallas medianas el resumen baja a lo ancho) --}}
+    <div class="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-12 gap-5">
+        <div class="2xl:col-span-5 {{ $seccion }}">
             <div class="{{ $cabecera }}">
                 <div class="font-bold uppercase text-sm">Consumo acumulado por impresora / ubicación</div>
                 <div class="text-xs text-blue-100">({{ $f($r['inicio']) }} – {{ $f($r['corte_al']) }})</div>
@@ -95,7 +94,7 @@
                 <tbody>
                     @foreach ($equipos as $i => $e)
                         <tr>
-                            <td class="px-4 py-1.5 font-semibold text-gray-800 whitespace-nowrap">{{ $e->ubicacion }}</td>
+                            <td class="px-4 py-1.5 font-semibold text-tinta whitespace-nowrap"><x-nivel :nivel="$e->nivel" class="me-1.5" />{{ $e->ubicacion }}</td>
                             <td class="px-2 py-1.5 text-gray-600 text-xs">{{ $e->serie_contrato ?? $e->serie }}</td>
                             <td class="px-2 py-1.5 w-full">
                                 <div class="flex items-center gap-2">
@@ -108,7 +107,7 @@
                     @endforeach
                 </tbody>
                 <tfoot>
-                    <tr class="bg-[#0d2149] text-white font-bold">
+                    <tr class="bg-marino text-white font-bold">
                         <td class="px-4 py-2" colspan="2">TOTAL GENERAL</td>
                         <td class="px-2 py-2 text-right text-lg">{{ $n($r['acumulado']) }}</td>
                         <td class="px-4 py-2 text-right text-lg">100%</td>
@@ -117,7 +116,7 @@
             </table>
         </div>
 
-        <div class="xl:col-span-4 {{ $seccion }}">
+        <div class="2xl:col-span-4 {{ $seccion }}">
             <div class="{{ $cabecera }}">
                 <div class="font-bold uppercase text-sm">Distribución del consumo por ubicación</div>
                 <div class="text-xs text-blue-100">({{ $f($r['inicio']) }} – {{ $f($r['corte_al']) }})</div>
@@ -134,7 +133,7 @@
                     @foreach ($equipos as $i => $e)
                         <li class="flex items-center gap-2">
                             <span class="size-3 rounded-full shrink-0" style="background: {{ $colores[$i % count($colores)] }}"></span>
-                            <span class="font-semibold text-gray-800">{{ $e->ubicacion }}</span>
+                            <span class="font-semibold text-tinta whitespace-nowrap">{{ $e->ubicacion }}</span>
                             <span class="ms-auto text-gray-500 whitespace-nowrap">{{ $n($e->acumulado) }} ({{ $e->porcentaje }}%)</span>
                         </li>
                     @endforeach
@@ -142,12 +141,12 @@
             </div>
         </div>
 
-        <div class="xl:col-span-3 {{ $seccion }}">
+        <div class="xl:col-span-2 2xl:col-span-3 {{ $seccion }}">
             <div class="{{ $cabecera }} font-bold uppercase text-sm">Resumen del contrato</div>
-            <ul class="divide-y divide-gray-100 px-5">
+            <ul class="grid sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-1 gap-x-8 px-5 [&>li]:border-b [&>li]:border-linea">
                 @foreach ([
                     ['fa-file-contract', 'text-blue-700', '# de contrato', $r['contrato']],
-                    ['fa-calendar', 'text-gray-600', 'Vigencia', $f($r['inicio']).' – '.$f($r['fin'])],
+                    ['fa-calendar', 'text-gray-600', 'Vigencia', $r['inicio']?->format('d/m/y').' – '.$r['fin']?->format('d/m/y')],
                     ['fa-layer-group', 'text-purple-700', 'Bolsón B/N total', $n($r['bolson'])],
                     ['fa-circle-check', 'text-green-700', 'Consumo acumulado', $n($r['acumulado'])],
                     ['fa-box-open', 'text-orange-500', 'Bolsón disponible', $n($r['disponible'])],
@@ -163,19 +162,15 @@
             <div class="bg-blue-50 px-5 py-3 flex items-center gap-3">
                 <i class="fas fa-chart-pie text-3xl text-cyan-700"></i>
                 <span class="text-sm font-semibold text-gray-700">% consumo del bolsón</span>
-                <span class="ms-auto text-3xl font-extrabold text-blue-700">{{ $r['porcentaje'] }}%</span>
+                <span class="ms-auto cifra text-3xl font-bold tracking-tight text-marino-600">{{ $r['porcentaje'] }}%</span>
             </div>
-            <div class="px-5 py-3">
-                <div class="h-2.5 rounded-full bg-gray-200 overflow-hidden">
-                    <div class="h-full {{ $r['porcentaje'] >= 90 ? 'bg-red-600' : 'bg-blue-600' }}" style="width: {{ min(100, $r['porcentaje']) }}%"></div>
-                </div>
-            </div>
+            <x-medidor-bolson :r="$r" class="px-5 py-4" />
         </div>
     </div>
 
     {{-- Fila 3: tendencia · producido último corte · hallazgos --}}
-    <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
-        <div class="xl:col-span-6 {{ $seccion }}">
+    <div class="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-12 gap-5">
+        <div class="xl:col-span-2 2xl:col-span-6 {{ $seccion }}">
             <div class="{{ $cabecera }} font-bold uppercase text-sm">Tendencia mensual de producción (páginas)</div>
             <div class="p-4">
                 @include('livewire.partials.chart', ['alto' => 240, 'config' => [
@@ -205,7 +200,7 @@
             </div>
         </div>
 
-        <div class="xl:col-span-3 {{ $seccion }}">
+        <div class="2xl:col-span-3 {{ $seccion }}">
             <div class="{{ $cabecera }}">
                 <div class="font-bold uppercase text-sm">Producido por impresora</div>
                 <div class="text-xs text-blue-100">({{ $ultimo?->etiqueta }} · en curso desde {{ $f($r['en_curso']->desde) }})</div>
@@ -217,7 +212,7 @@
                 <tbody class="divide-y divide-gray-100">
                     @foreach ($r['por_equipo']->sortByDesc('ultimo_periodo')->values() as $e)
                         <tr>
-                            <td class="px-4 py-1.5 font-medium">{{ $e->ubicacion }}</td>
+                            <td class="px-4 py-1.5 font-medium whitespace-nowrap"><x-nivel :nivel="$e->nivel" class="me-1.5" />{{ $e->ubicacion }}</td>
                             <td class="px-2 py-1.5 text-xs text-gray-600">{{ $e->serie }}</td>
                             <td class="px-2 py-1.5 text-right {{ $e->ultimo_periodo === null ? 'text-red-500' : '' }}">{{ $e->ultimo_periodo === null ? 'pendiente' : $n($e->ultimo_periodo) }}</td>
                             <td class="px-4 py-1.5 text-right text-gray-600">{{ $n($e->en_curso) }}</td>
@@ -225,7 +220,7 @@
                     @endforeach
                 </tbody>
                 <tfoot>
-                    <tr class="bg-[#0d2149] text-white font-bold">
+                    <tr class="bg-marino text-white font-bold">
                         <td class="px-4 py-2" colspan="2">TOTAL GENERAL</td>
                         <td class="px-2 py-2 text-right">{{ $n($ultimo?->total) }}</td>
                         <td class="px-4 py-2 text-right">{{ $n($r['en_curso']->total) }}</td>
@@ -234,7 +229,7 @@
             </table>
         </div>
 
-        <div class="xl:col-span-3 {{ $seccion }}">
+        <div class="2xl:col-span-3 {{ $seccion }}">
             <div class="{{ $cabecera }} font-bold uppercase text-sm">Hallazgos principales</div>
             <ul class="p-4 space-y-4">
                 @foreach ($hallazgos as [$titulo, $texto, $icono, $color])

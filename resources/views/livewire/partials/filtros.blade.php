@@ -1,8 +1,8 @@
 {{-- Filtros compartidos por el Dashboard General y el Tablero. Requiere $opciones. --}}
 @php
-    $ctrl = 'py-2 px-3 block w-full border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500';
+    $ctrl = 'block w-full py-2 px-3 rounded-lg border-0 bg-papel ring-1 ring-inset ring-linea text-sm text-tinta focus:ring-2 focus:ring-marino-600';
 @endphp
-<form wire:submit="filtrar" class="bg-white border border-gray-200 rounded-xl shadow-2xs p-4 mb-6">
+<form wire:submit="filtrar" class="bg-white rounded-xl shadow-hoja p-4 mb-6">
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio</label>

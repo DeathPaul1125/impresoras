@@ -50,7 +50,7 @@ class ControlContadoresExport implements WithMultipleSheets
             ['Consumo acumulado al '.$r['corte_al']?->format('d/m/Y H:i').' Hrs. · generado '.now()->format('d/m/Y H:i')],
             ['# de Contrato:', $r['contrato'], 'Impresión mensual aprox. (12 meses):', $r['mensual_aprox'], 'Consumo promedio mensual:', $r['promedio_mensual'], 'Se agota (proyección):', $r['agotamiento']?->format('d/m/Y') ?? '—'],
             ['Bolsón B/N:', $r['bolson'], 'Consumo acumulado:', $r['acumulado'], 'Bolsón disponible:', $r['disponible'], '% consumo del bolsón:', $r['porcentaje'] / 100],
-            [],
+            [''],   // fila separadora (un [] vacío se omite al exportar)
         ];
 
         $enc = ['Modelo', 'Serie', 'Ubicación', 'Nivel', 'Contador inicial '.$inicial?->format('d/m/Y')];
@@ -82,7 +82,7 @@ class ControlContadoresExport implements WithMultipleSheets
         $filas[] = $saldo;
 
         if ($r['alertas']) {
-            $filas[] = [];
+            $filas[] = [''];
             foreach ($r['alertas'] as $a) {
                 $filas[] = ['⚠ '.$a];
             }
@@ -102,7 +102,7 @@ class ControlContadoresExport implements WithMultipleSheets
             ['CONTADORES al '.$p->fecha->format('d/m/Y H:i').' Hrs. ('.$p->etiqueta.')'],
             ['# de Contrato:', $r['contrato'], 'Bolsón contratado:', $r['bolson'], 'Bolsón al corte anterior:', $saldoAnterior],
             ['Producido en el mes:', $p->total, 'Acumulado:', $r['bolson'] - $p->saldo, 'Bolsón disponible:', $p->saldo],
-            [],
+            [''],
             ['Modelo', 'Serie', 'Ubicación', 'Nivel', 'Contador inicial '.$p->desde->format('d/m/Y'), 'Contador actual '.$p->fecha->format('d/m/Y'), 'Producido'],
         ];
         $ini = $fin = 0;

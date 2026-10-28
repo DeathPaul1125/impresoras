@@ -64,7 +64,7 @@ class AuthenticationTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Tablero de Totales')   // sidebar (layouts/app.blade.php)
+            ->assertSee('Análisis de consumo')   // sidebar (layouts/app.blade.php)
             ->assertSee('Cerrar sesión');
     }
 

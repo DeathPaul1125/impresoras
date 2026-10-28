@@ -48,20 +48,30 @@ class ReportesTest extends TestCase
         });
     }
 
-    public function test_semanal_y_mensual_incluyen_detalle_por_dia(): void
+    public function test_semanal_incluye_detalle_por_dia(): void
     {
         Mail::fake();
         $this->travelTo(Carbon::parse('2026-10-30 18:05:00'));   // viernes
         $this->artisan('impresoras:enviar-reporte semanal')->assertSuccessful();
 
-        $this->travelTo(Carbon::parse('2026-10-31 18:05:00'));   // último día del mes
+        Mail::assertSent(ReporteConsumo::class, fn (ReporteConsumo $m) => str_contains($m->titulo, '26/10/2026 – 30/10/2026')
+            && array_slice($m->rows[0], 3, 4) === [90, 60, 15, 160]
+            && array_column($m->dias, 0) === ['28/10/2026', '29/10/2026']);
+    }
+
+    public function test_mensual_envia_el_reporte_de_corte(): void
+    {
+        Mail::fake();
+        \App\Models\Configuracion::setContrato(['numero' => '4912', 'bolson' => 1000, 'inicio' => '2026-09-01', 'fin' => '2026-12-31', 'dia_corte' => 25]);
+        $d = Dispositivo::first();
+        \App\Models\Corte::create(['fecha' => '2026-09-25 00:00:00', 'dispositivo_id' => $d->id, 'serie' => 'S1', 'contador' => 100]);
+        \App\Models\Corte::create(['fecha' => '2026-10-25 00:00:00', 'dispositivo_id' => $d->id, 'serie' => 'S1', 'contador' => 340]);
+
         $this->artisan('impresoras:enviar-reporte mensual')->assertSuccessful();
 
-        foreach (['26/10/2026 – 30/10/2026', '01/10/2026 – 31/10/2026'] as $rango) {
-            Mail::assertSent(ReporteConsumo::class, fn (ReporteConsumo $m) => str_contains($m->titulo, $rango)
-                && array_slice($m->rows[0], 3, 4) === [90, 60, 15, 160]
-                && array_column($m->dias, 0) === ['28/10/2026', '29/10/2026']);
-        }
+        Mail::assertSent(\App\Mail\ReporteCorte::class, fn ($m) => $m->hasTo('a@senabed.gob.gt')
+            && $m->r['periodos']->last()->total === 240
+            && str_contains($m->envelope()->subject, 'Corte Octubre 2026'));
     }
 
     public function test_sin_correos_no_envia(): void

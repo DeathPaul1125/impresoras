@@ -7,12 +7,6 @@
     $moneda ??= true;
     $datos ??= [];
 @endphp
-@once
-    @push('scripts')
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-    @endpush
-@endonce
-
 <div wire:key="grafica-{{ $key }}-{{ $firma }}"
      x-data="{
         chart: null,
