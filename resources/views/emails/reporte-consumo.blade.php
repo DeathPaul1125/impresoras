@@ -14,7 +14,9 @@
         return '<span style="color:'.$color.'; font-weight:bold;">'.($v > 0 ? '▲ +' : ($v < 0 ? '▼ ' : '')).$v.'%</span>';
     };
     $kpis = [
-        ['Páginas', $n($t['total']), $variacion($datos['variacion']['total']).' vs. '.$datos['anterior']['etiqueta']],
+        ['Páginas', $n($t['total']), $datos['variacion']['total'] === null
+            ? '<span style="color:#94a3b8;">sin lectura de '.e($datos['anterior']['etiqueta']).'</span>'
+            : $variacion($datos['variacion']['total']).' vs. '.e($datos['anterior']['etiqueta'])],
         ['Costo', $q($t['costo_total']), $variacion($datos['variacion']['costo_total'])],
         ['Impresiones / copias', $n($t['impresiones']).' / '.$n($t['copias']), $n($t['escaneos']).' escaneos (sin costo)'],
         ['Trabajos', $n($t['trabajos']), $n($t['usuarios']).' usuarios con consumo'],

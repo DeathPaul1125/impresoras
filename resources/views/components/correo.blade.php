@@ -7,6 +7,15 @@
     $ruta = public_path('img/logo-senabed-die.png');
     $logo = $message ? $message->embed($ruta) : 'data:image/png;base64,'.base64_encode(file_get_contents($ruta));
 @endphp
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ $titulo }}</title>
+</head>
+<body style="margin: 0; padding: 0;">
 <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background: #eef1f6; padding: 24px 0; font-family: Arial, Helvetica, sans-serif; color: #1f2937;">
     <tr>
         <td align="center">
@@ -45,3 +54,5 @@
         </td>
     </tr>
 </table>
+</body>
+</html>
