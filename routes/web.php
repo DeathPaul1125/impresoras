@@ -6,6 +6,7 @@ use App\Livewire\Actions\Logout;
 use App\Livewire\ConfiguracionPrecio;
 use App\Livewire\Cortes;
 use App\Livewire\DashboardGeneral;
+use App\Livewire\Historico;
 use App\Livewire\Impresoras;
 use App\Livewire\Tablero;
 use App\Livewire\Trabajos;
@@ -17,6 +18,7 @@ Route::redirect('/', '/dashboard');
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', DashboardGeneral::class)->name('dashboard');
     Route::get('tablero', Tablero::class)->name('tablero');
+    Route::get('historico', Historico::class)->name('historico');
 
     // Exportaciones (respetan los filtros vigentes vía query string)
     Route::get('export/{tipo}', [ExportController::class, 'excel'])->name('export.excel');

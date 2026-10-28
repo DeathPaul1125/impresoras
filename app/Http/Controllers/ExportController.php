@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Exports\ConsumoExport;
 use App\Exports\ControlContadoresExport;
+use App\Exports\HojasExport;
 use App\Models\Trabajo;
 use App\Support\Consumo;
 use App\Support\ConsumoCuentas;
 use App\Support\Contrato;
+use App\Support\Historia;
 use App\Support\ReportePeriodo;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -24,6 +26,9 @@ class ExportController extends Controller
     {
         if ($tipo === 'control') {
             return Excel::download(new ControlContadoresExport, 'control_contadores_'.now()->format('Ymd_His').'.xlsx');
+        }
+        if ($tipo === 'historia') {
+            return Excel::download(new HojasExport((new Historia($request->integer('dispositivo') ?: null))->hojas()), 'historico_'.now()->format('Ymd_His').'.xlsx');
         }
         if ($tipo === 'trabajos') {
             abort_unless(Gate::allows('admin'), 403);   // incluye nombres de documentos
