@@ -15,6 +15,17 @@ class ConfiguracionPrecio extends Component
 {
     public float $precio_unitario = 0.17;
 
+    // Contrato con el proveedor.
+    public string $contrato_numero = '';
+
+    public int $contrato_bolson = 0;
+
+    public string $contrato_inicio = '';
+
+    public string $contrato_fin = '';
+
+    public int $contrato_dia_corte = 25;
+
     /** Separados por coma. */
     public string $correos_reportes = '';
 
@@ -39,6 +50,13 @@ class ConfiguracionPrecio extends Component
     public function mount(): void
     {
         $this->precio_unitario = Configuracion::precioUnitario();
+
+        $c = Configuracion::contrato();
+        $this->contrato_numero = (string) $c['numero'];
+        $this->contrato_bolson = (int) $c['bolson'];
+        $this->contrato_inicio = (string) $c['inicio'];
+        $this->contrato_fin = (string) $c['fin'];
+        $this->contrato_dia_corte = (int) $c['dia_corte'];
         $this->correos_reportes = implode(', ', Configuracion::correosReportes());
 
         $s = Configuracion::smtp();
@@ -60,6 +78,30 @@ class ConfiguracionPrecio extends Component
         Configuracion::setPrecioUnitario($this->precio_unitario);
 
         session()->flash('ok', 'Precio unitario actualizado a Q'.number_format($this->precio_unitario, 2).'.');
+    }
+
+    public function guardarContrato(): void
+    {
+        $this->validate([
+            'contrato_numero' => 'required|string|max:50',
+            'contrato_bolson' => 'required|integer|min:1',
+            'contrato_inicio' => 'required|date',
+            'contrato_fin' => 'required|date|after:contrato_inicio',
+            'contrato_dia_corte' => 'required|integer|between:1,28',
+        ], [], [
+            'contrato_numero' => 'número de contrato', 'contrato_bolson' => 'bolsón', 'contrato_inicio' => 'inicio',
+            'contrato_fin' => 'fin', 'contrato_dia_corte' => 'día de corte',
+        ]);
+
+        Configuracion::setContrato([
+            'numero' => trim($this->contrato_numero),
+            'bolson' => $this->contrato_bolson,
+            'inicio' => $this->contrato_inicio,
+            'fin' => $this->contrato_fin,
+            'dia_corte' => $this->contrato_dia_corte,
+        ]);
+
+        session()->flash('ok', 'Datos del contrato guardados.');
     }
 
     public function guardarCorreos(): void

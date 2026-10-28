@@ -15,12 +15,13 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans antialiased h-full bg-gray-50">
+    <body class="font-sans antialiased h-full bg-papel text-tinta">
         @php
             $nav = [
-                ['route' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'fa-chart-line', 'admin' => false],
-                ['route' => 'tablero', 'label' => 'Tablero de Totales', 'icon' => 'fa-table-cells', 'admin' => false],
+                ['route' => 'dashboard', 'label' => 'Dashboard del contrato', 'icon' => 'fa-chart-line', 'admin' => false],
+                ['route' => 'tablero', 'label' => 'Análisis de consumo', 'icon' => 'fa-table-cells', 'admin' => false],
                 ['route' => 'impresoras', 'label' => 'Impresoras', 'icon' => 'fa-print', 'admin' => true],
+                ['route' => 'cortes', 'label' => 'Cortes del contrato', 'icon' => 'fa-scissors', 'admin' => true],
                 ['route' => 'configuracion', 'label' => 'Configuración', 'icon' => 'fa-gear', 'admin' => true],
             ];
             $seccion = collect($nav)->firstWhere('route', request()->route()?->getName())['label'] ?? config('app.name');
@@ -28,14 +29,14 @@
 
         <div x-data="{ sidebar: false, userMenu: false }" class="min-h-full">
             {{-- ===== Sidebar ===== --}}
-            <aside class="fixed inset-y-0 start-0 z-50 w-72 text-slate-300 bg-gradient-to-b from-[#0d2149] to-[#081530] shadow-xl transform transition-transform duration-300 lg:translate-x-0"
+            <aside class="fixed inset-y-0 start-0 z-50 w-64 text-slate-300 bg-marino transform transition-transform duration-200 ease-out lg:translate-x-0"
                    :class="sidebar ? 'translate-x-0' : '-translate-x-full'">
                 <div class="flex flex-col h-full">
                     <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-3 px-6 h-16 border-b border-white/10">
-                        <span class="inline-flex items-center justify-center size-9 rounded-lg bg-blue-600 text-white font-bold shadow-lg shadow-blue-900/50">SB</span>
+                        <span class="inline-flex items-center justify-center size-9 rounded-lg bg-white/10 ring-1 ring-white/15 text-white"><i class="fas fa-print"></i></span>
                         <div class="leading-tight">
-                            <span class="block text-sm font-semibold text-white">Contadores</span>
-                            <span class="block text-[11px] text-slate-400">SENABED</span>
+                            <span class="block text-sm font-semibold text-white tracking-tight">Contadores</span>
+                            <span class="block text-[11px] text-slate-400">SENABED · Multifuncionales</span>
                         </div>
                     </a>
 
@@ -45,11 +46,12 @@
                             @if (! $item['admin'] || auth()->user()->isAdmin())
                                 @php $activo = request()->routeIs($item['route']); @endphp
                                 <a href="{{ route($item['route']) }}" wire:navigate @click="sidebar = false"
-                                   class="group flex items-center gap-x-3 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors
+                                   @if ($activo) aria-current="page" @endif
+                                   class="group relative flex items-center gap-x-3 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors
                                           {{ $activo
-                                              ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40'
-                                              : 'text-slate-300 hover:bg-white/10 hover:text-white' }}">
-                                    <i class="fas {{ $item['icon'] }} w-4 text-center {{ $activo ? 'text-white' : 'text-slate-400 group-hover:text-white' }}"></i>
+                                              ? 'bg-white/10 text-white before:absolute before:start-0 before:inset-y-2 before:w-1 before:rounded-full before:bg-sky-400'
+                                              : 'text-slate-300 hover:bg-white/5 hover:text-white' }}">
+                                    <i class="fas {{ $item['icon'] }} w-4 text-center {{ $activo ? 'text-sky-300' : 'text-slate-500 group-hover:text-slate-300' }}"></i>
                                     {{ $item['label'] }}
                                 </a>
                             @endif
@@ -67,20 +69,26 @@
                  class="fixed inset-0 z-40 bg-gray-900/50 lg:hidden" style="display:none"></div>
 
             {{-- ===== Topbar ===== --}}
-            <header class="sticky top-0 inset-x-0 z-30 flex items-center gap-3 bg-white border-b border-gray-200 px-4 sm:px-6 h-16 lg:ps-[19rem]">
+            <header class="sticky top-0 inset-x-0 z-30 flex items-center gap-3 bg-white/90 backdrop-blur border-b border-linea px-4 sm:px-6 h-14 lg:ps-[17.5rem]">
                 <button type="button" @click="sidebar = true"
                         class="lg:hidden inline-flex items-center justify-center size-9 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100"
                         aria-label="Menú">
                     <i class="fas fa-bars"></i>
                 </button>
 
-                <h1 class="text-base font-semibold text-gray-800">{{ $seccion }}</h1>
+                <h1 class="text-sm font-semibold text-tinta">{{ $seccion }}</h1>
+                @php $contrato = \App\Models\Configuracion::contrato(); @endphp
+                @if ($contrato['numero'])
+                    <span class="hidden md:inline-flex items-center gap-1.5 py-0.5 px-2 rounded-md bg-marino-50 text-[11px] font-medium text-marino">
+                        <i class="fas fa-file-contract"></i> Contrato {{ $contrato['numero'] }} · bolsón {{ number_format($contrato['bolson']) }}
+                    </span>
+                @endif
 
                 {{-- Menú de usuario --}}
                 <div class="ms-auto relative" @click.outside="userMenu = false">
                     <button type="button" @click="userMenu = !userMenu"
                             class="inline-flex items-center gap-x-2 py-1.5 px-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-100">
-                        <span class="inline-flex items-center justify-center size-8 rounded-full bg-blue-600 text-white text-xs font-semibold">
+                        <span class="inline-flex items-center justify-center size-8 rounded-full bg-marino text-white text-xs font-semibold">
                             {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
                         </span>
                         <span class="hidden sm:block">{{ auth()->user()->name }}</span>
@@ -112,7 +120,7 @@
             </header>
 
             {{-- ===== Contenido ===== --}}
-            <div class="lg:ps-72">
+            <div class="lg:ps-64">
                 @isset($header)
                     <div class="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">{{ $header }}</div>
                 @endisset

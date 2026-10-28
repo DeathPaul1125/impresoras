@@ -3,8 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Mail\ReporteConsumo;
+use App\Mail\ReporteCorte;
 use App\Models\Configuracion;
 use App\Support\Consumo;
+use App\Support\Contrato;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
@@ -13,12 +15,12 @@ class EnviarReporte extends Command
 {
     protected $signature = 'impresoras:enviar-reporte {tipo : diario|semanal|mensual}';
 
-    protected $description = 'Envía por correo el consumo por impresora del día, la semana (lunes a viernes) o el mes';
+    protected $description = 'Envía por correo el consumo del día, de la semana (lunes a viernes) o el reporte del corte mensual del contrato';
 
     private const TITULOS = [
         'diario' => 'Reporte diario',
         'semanal' => 'Reporte de fin de semana (lunes a viernes)',
-        'mensual' => 'Reporte mensual',
+        'mensual' => 'Reporte de corte mensual',
     ];
 
     public function handle(): int
@@ -37,13 +39,20 @@ class EnviarReporte extends Command
             return self::FAILURE;
         }
 
+        Configuracion::aplicarSmtp();
+
+        // Mensual = corte del contrato (se envía después de registrar el corte del día 25).
+        if ($tipo === 'mensual') {
+            $mail = new ReporteCorte;
+            Mail::to($correos)->send($mail);
+            $this->info($mail->envelope()->subject.': enviado a '.implode(', ', $correos));
+
+            return self::SUCCESS;
+        }
+
         // El consumo de cada día = lectura de las 6 pm de ese día − la del día anterior.
         $hoy = today();
-        $inicio = match ($tipo) {
-            'diario' => $hoy,
-            'semanal' => $hoy->copy()->startOfWeek(),   // lunes
-            'mensual' => $hoy->copy()->startOfMonth(),
-        };
+        $inicio = $tipo === 'diario' ? $hoy : $hoy->copy()->startOfWeek();   // semanal: desde el lunes
 
         $consumo = new Consumo(['fecha_inicio' => $inicio->toDateString(), 'fecha_fin' => $hoy->toDateString()]);
         $titulo = self::TITULOS[$tipo].' · '.($tipo === 'diario' ? $hoy->format('d/m/Y') : $inicio->format('d/m/Y').' – '.$hoy->format('d/m/Y'));
@@ -58,12 +67,14 @@ class EnviarReporte extends Command
             ->map(fn ($d) => [Carbon::parse($d->fecha)->format('d/m/Y'), $d->impresiones, $d->copias, $d->escaneos, $d->total, 'Q'.number_format($d->costo_total, 2)])
             ->all();
 
-        Configuracion::aplicarSmtp();
+        $r = (new Contrato)->resumen();
         Mail::to($correos)->send(new ReporteConsumo(
             $titulo,
             ['Ubicación', 'Host', 'IP', 'Impresiones', 'Copias', 'Escaneos', 'Total páginas', 'Costo'],
             $rows,
             $dias,
+            $r['bolson'] ? sprintf('Contrato %s: acumulado %s de %s páginas (%s%%), disponibles %s.',
+                $r['contrato'], number_format($r['acumulado']), number_format($r['bolson']), $r['porcentaje'], number_format($r['disponible'])) : null,
         ));
         $this->info("{$titulo}: enviado a ".implode(', ', $correos));
 

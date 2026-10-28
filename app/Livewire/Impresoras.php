@@ -19,6 +19,8 @@ class Impresoras extends Component
 
     public string $ubicacion = '';
 
+    public string $nivel = '';
+
     public string $nombre_host = '';
 
     public string $direccion_ip = '';
@@ -35,6 +37,7 @@ class Impresoras extends Component
         $d = Dispositivo::with('modelo')->findOrFail($id);
         $this->editando = $d->id;
         $this->ubicacion = (string) $d->ubicacion;
+        $this->nivel = (string) $d->nivel;
         $this->nombre_host = $d->nombre_host;
         $this->direccion_ip = (string) $d->direccion_ip;
         $this->modelo = (string) $d->modelo?->nombre;
@@ -44,7 +47,7 @@ class Impresoras extends Component
 
     public function cancelar(): void
     {
-        $this->reset('editando', 'ubicacion', 'nombre_host', 'direccion_ip', 'modelo', 'serie');
+        $this->reset('editando', 'ubicacion', 'nivel', 'nombre_host', 'direccion_ip', 'modelo', 'serie');
         $this->resetErrorBag();
     }
 
@@ -52,6 +55,7 @@ class Impresoras extends Component
     {
         $datos = $this->validate([
             'ubicacion' => 'required|string|max:255',
+            'nivel' => 'nullable|string|max:10',
             'nombre_host' => ['required', 'string', 'max:255', Rule::unique('dispositivos')->ignore($this->editando)],
             'direccion_ip' => ['required', 'ip', Rule::unique('dispositivos')->ignore($this->editando)],
             'modelo' => 'nullable|string|max:255',
@@ -60,6 +64,7 @@ class Impresoras extends Component
 
         $datos['modelo_id'] = trim($datos['modelo']) !== '' ? Modelo::firstOrCreate(['nombre' => trim($datos['modelo'])])->id : null;
         $datos['serie'] = $datos['serie'] ?: null;
+        $datos['nivel'] = $datos['nivel'] ?: null;
         unset($datos['modelo']);
 
         $this->editando ? Dispositivo::findOrFail($this->editando)->update($datos) : Dispositivo::create($datos);
@@ -120,7 +125,7 @@ class Impresoras extends Component
     public function render()
     {
         return view('livewire.impresoras', [
-            'impresoras' => Dispositivo::with('modelo')->withCount('contadores')->withMax('contadores', 'leido_en')->orderBy('ubicacion')->get(),
+            'impresoras' => Dispositivo::with('modelo')->withCount('contadores')->withMax('contadores', 'leido_en')->orderByRaw('nivel IS NULL, nivel')->orderBy('ubicacion')->get(),
             'modelos' => Modelo::orderBy('nombre')->pluck('nombre'),
         ]);
     }

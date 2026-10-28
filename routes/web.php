@@ -3,6 +3,7 @@
 use App\Http\Controllers\ExportController;
 use App\Livewire\Actions\Logout;
 use App\Livewire\ConfiguracionPrecio;
+use App\Livewire\Cortes;
 use App\Livewire\DashboardGeneral;
 use App\Livewire\Impresoras;
 use App\Livewire\Tablero;
@@ -21,6 +22,7 @@ Route::middleware(['auth'])->group(function () {
     // Solo administradores
     Route::middleware('can:admin')->group(function () {
         Route::get('impresoras', Impresoras::class)->name('impresoras');
+        Route::get('cortes', Cortes::class)->name('cortes');
         Route::get('configuracion', ConfiguracionPrecio::class)->name('configuracion');
     });
 

@@ -1,3 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Cifras de contadores alineadas en columnas (sin saltos al actualizar). */
+table, .cifra { font-variant-numeric: tabular-nums; }
+h1, h2, h3 { text-wrap: balance; }

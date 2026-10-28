@@ -4,6 +4,9 @@
 @endphp
 <div style="font-family: Arial, sans-serif; color: #1f2937; font-size: 14px;">
     <h2 style="color: #0d2149; margin-bottom: 4px;">{{ $titulo }}</h2>
+    @if ($bolson)
+        <p style="background: #eef2ff; border-left: 4px solid #1d4ed8; padding: 8px 10px; margin: 8px 0;"><b>Bolsón B/N.</b> {{ $bolson }}</p>
+    @endif
     <p style="color: #6b7280; margin-top: 0;">Consumo de cada día = lectura de las 6 pm − lectura del día anterior. Costo = (impresiones + copias) × precio unitario; los escaneos no tienen costo. Se adjunta en Excel y PDF.</p>
 
     <table cellpadding="6" cellspacing="0" style="border-collapse: collapse; font-size: 13px;">
