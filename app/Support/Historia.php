@@ -116,6 +116,50 @@ class Historia
         return $limite ? $u->take($limite) : $u;
     }
 
+    /** Los 12 meses: [mes => ['anterior' => B/N|null, 'actual' => B/N|null]]. */
+    public function serieAnual(): array
+    {
+        [$a, $b] = $this->anios();
+        $m = $this->meses();
+        $serie = [];
+        foreach (range(1, 12) as $i) {
+            $serie[$i] = ['anterior' => $m[sprintf('%d-%02d', $a, $i)]->bn ?? null, 'actual' => $m[sprintf('%d-%02d', $b, $i)]->bn ?? null];
+        }
+
+        return $serie;
+    }
+
+    /**
+     * Meses que no se pueden leer solos.
+     * tardia: [mes, mes siguiente] cuando un mes casi no tiene registro (< 20% del año anterior) y el siguiente
+     * sale inflado (> 150%): el sistema anterior no leyó y sumó el consumo en la lectura siguiente.
+     * parcial: el último mes del año actual si todavía no termina o quedó incompleto.
+     */
+    public function anomalias(): array
+    {
+        $s = $this->serieAnual();
+        $tardias = [];
+        foreach (range(1, 11) as $i) {
+            [$x, $y] = [$s[$i], $s[$i + 1]];
+            if ($x['actual'] !== null && $x['anterior'] && $y['actual'] && $y['anterior']
+                && $x['actual'] < $x['anterior'] * 0.2 && $y['actual'] > $y['anterior'] * 1.5) {
+                $tardias[] = [$i, $i + 1];
+            }
+        }
+        $ultimo = max(array_keys(array_filter($s, fn ($v) => $v['actual'] !== null)) ?: [0]);
+
+        return ['tardias' => $tardias, 'parcial' => $ultimo > $this->mesesComparables() ? $ultimo : null];
+    }
+
+    /** Qué parte del consumo del año hacen los usuarios del 10% superior: [usuarios, cuántos son el 10%, % del total]. */
+    public function concentracion(int $anio): array
+    {
+        $u = $this->usuarios($anio)->pluck('bn');
+        $k = (int) ceil($u->count() / 10);
+
+        return [$u->count(), $k, $u->sum() ? round($u->take($k)->sum() / $u->sum() * 100, 1) : 0];
+    }
+
     /** Hojas del Excel: mensual, impresora × mes, unidades, usuarios de cada año y detalle completo. */
     public function hojas(): array
     {

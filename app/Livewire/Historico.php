@@ -33,6 +33,10 @@ class Historico extends Component
             'impresoras' => $h->porImpresora(),
             'unidades' => $h->porUnidad(),
             'usuarios' => $h->usuarios($this->anio ?? $actual, 15),
+            'totalAnio' => $h->usuarios($this->anio ?? $actual)->sum('bn'),
+            'serie' => $h->serieAnual(),
+            'anomalias' => $h->anomalias(),
+            'concentracion' => $h->concentracion($actual),
             'dispositivos' => Dispositivo::orderBy('nivel')->get(),
         ]);
     }

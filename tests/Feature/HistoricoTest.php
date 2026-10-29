@@ -67,7 +67,7 @@ class HistoricoTest extends TestCase
         $this->artisan('impresoras:importar-historia --desde=2025-01 --hasta=2026-01');
         $this->actingAs(User::create(['name' => 'C', 'email' => 'c@a.com', 'password' => bcrypt('x'), 'role' => 'consulta']));
 
-        Livewire::test(Historico::class)->assertOk()->assertSee('Impresoras mes a mes')->assertSee('DAB_Marylin Castro')
+        Livewire::test(Historico::class)->assertOk()->assertSee('Por impresora')->assertSee('Asiento')->assertSee('DAB_Marylin Castro')
             ->call('$set', 'anio', 2025)->assertDontSee('UAI_Lizbeth Mazariegos');
         $this->get('/historico')->assertOk();
         $this->get('/export/historia')->assertOk()->assertDownload();
