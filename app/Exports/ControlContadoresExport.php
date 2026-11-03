@@ -105,12 +105,12 @@ class ControlContadoresExport implements WithMultipleSheets
             ['Usuarios con consumo:', $usuarios->count(), 'Costo total:', round((float) $usuarios->sum('costo_total'), 2)],
             [''],
             [''],
-            ['Clave', 'Usuario', 'Unidad', 'Impresiones', 'Copias', 'Escaneos', 'Costo (Q)'],
+            ['Usuario', 'Unidad', 'Impresiones', 'Copias', 'Escaneos', 'Costo (Q)'],   // sin la clave: es personal
         ];
         foreach ($usuarios as $u) {
-            $filas[] = [$u->id_cuenta, $u->nombre_cuenta, $u->unidad, $u->impresiones, $u->copias, $u->escaneos, round($u->costo_total, 2)];
+            $filas[] = [$u->nombre_cuenta, $u->unidad, $u->impresiones, $u->copias, $u->escaneos, round($u->costo_total, 2)];
         }
-        $filas[] = ['Totales', '', '', $usuarios->sum('impresiones'), $usuarios->sum('copias'), $usuarios->sum('escaneos'), round((float) $usuarios->sum('costo_total'), 2)];
+        $filas[] = ['Totales', '', $usuarios->sum('impresiones'), $usuarios->sum('copias'), $usuarios->sum('escaneos'), round((float) $usuarios->sum('costo_total'), 2)];
 
         return $filas;
     }

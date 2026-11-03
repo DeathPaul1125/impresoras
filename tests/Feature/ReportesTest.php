@@ -98,4 +98,63 @@ class ReportesTest extends TestCase
         $this->assertStringStartsWith('%PDF', end($adjuntos)->getBody());
         $this->assertStringContainsString('Atención de equipos', $correo->getHtmlBody());
     }
+
+    /** Texto de todas las hojas de un .xlsx (cadenas compartidas y celdas). */
+    private static function textoExcel(string $xlsx): string
+    {
+        $archivo = tempnam(sys_get_temp_dir(), 'xlsx');
+        file_put_contents($archivo, $xlsx);
+        $z = new \ZipArchive;
+        $z->open($archivo);
+        $texto = '';
+        for ($i = 0; $i < $z->numFiles; $i++) {
+            if (str_starts_with($z->getNameIndex($i), 'xl/')) {
+                $texto .= $z->getFromIndex($i);
+            }
+        }
+        $z->close();
+        unlink($archivo);
+
+        return $texto;
+    }
+
+    public function test_los_reportes_no_muestran_claves_y_dicen_que_imprimio_cada_usuario(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-29 18:30:00'));
+        $d = Dispositivo::first();
+        $cuenta = \App\Models\Cuenta::create(['id_cuenta' => '9395', 'nombre_cuenta' => 'DAF_Víctor López']);
+        foreach ([['2026-10-28 18:02:00', 100], ['2026-10-29 18:02:00', 109]] as [$f, $copias]) {
+            \App\Models\ContadorCuenta::create(['cuenta_id' => $cuenta->id, 'dispositivo_id' => $d->id, 'impresiones' => 0, 'copias' => $copias, 'escaneos' => 0, 'leido_en' => $f]);
+        }
+        foreach ([[1, 'Informe mensual.docx', 4, '09:15'], [2, 'Informe mensual.docx', 4, '11:00'], [3, 'Oficio 25-2026.pdf', 1, '14:40']] as [$n, $doc, $pag, $h]) {
+            \App\Models\Trabajo::create(['dispositivo_id' => $d->id, 'origen' => 'impresion', 'trabajo' => $n, 'tipo' => 'impresion', 'documento' => $doc,
+                'usuario' => 'lopez.victor', 'paginas' => $pag, 'originales' => $pag, 'juegos' => 1, 'estado' => 'completado', 'inicio' => "2026-10-29 {$h}:00"]);
+        }
+
+        $m = new ReporteConsumo(ReportePeriodo::dia(today()));
+        $html = $m->render();
+        $excel = self::textoExcel(\Maatwebsite\Excel\Facades\Excel::raw(ReporteConsumo::excel($m->reporte), \Maatwebsite\Excel\Excel::XLSX));
+
+        // Sin claves personales en el correo ni en el Excel adjunto (el PDF usa las mismas hojas).
+        foreach ([$html, $excel] as $texto) {
+            $this->assertStringNotContainsString('9395', $texto);
+            $this->assertStringNotContainsString('>Clave<', $texto);
+        }
+        $this->assertStringContainsString('DAF_Víctor López', $html);
+
+        // Qué imprimió cada usuario: agrupado por usuario de Windows cuando el trabajo no trae cuenta.
+        $u = $m->datos['por_usuario']->first();
+        $this->assertSame(['lopez.victor', 3, 9, ['DAB 7o.']], [$u->quien, $u->trabajos, $u->paginas, $u->impresoras]);
+        $this->assertSame(['Informe mensual.docx', 2, 8], [$u->documentos[0]->documento, $u->documentos[0]->veces, $u->documentos[0]->paginas]);
+        $this->assertStringContainsString('Qué imprimió cada usuario', $html);
+        $this->assertStringContainsString('Oficio 25-2026.pdf', $html);
+        $this->assertStringContainsString('Trabajos por usuario', $excel);
+
+        // El Excel del reporte de corte tampoco lleva la clave.
+        \App\Models\Corte::create(['fecha' => '2026-09-25 00:00:00', 'dispositivo_id' => $d->id, 'serie' => 'S1', 'contador' => 100]);
+        \App\Models\Corte::create(['fecha' => '2026-10-29 18:10:00', 'dispositivo_id' => $d->id, 'serie' => 'S1', 'contador' => 340]);
+        $corte = self::textoExcel(\Maatwebsite\Excel\Facades\Excel::raw(new \App\Exports\ControlContadoresExport, \Maatwebsite\Excel\Excel::XLSX));
+        $this->assertStringContainsString('DAF_Víctor López', $corte);
+        $this->assertStringNotContainsString('9395', $corte);
+    }
 }

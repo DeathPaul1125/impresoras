@@ -23,7 +23,7 @@
     ];
 @endphp
 <x-correo :titulo="$titulo" :subtitulo="'Consumo de las impresoras · '.$reporte->etiqueta()" :message="$message ?? null"
-          pie="Adjuntos: Excel con todas las hojas (resumen, atención, impresoras, por día, papel y doble cara, tóner, usuarios, unidades, trabajos por hora, registro de trabajos y ficha técnica) y PDF con el mismo contenido salvo el registro de trabajos.">
+          pie="Adjuntos: Excel con todas las hojas (resumen, atención, impresoras, por día, papel y doble cara, tóner, usuarios, unidades, trabajos por usuario, trabajos por hora, registro de trabajos y ficha técnica) y PDF con el mismo contenido salvo el registro de trabajos.">
 
     {{-- Indicadores --}}
     <table {!! $tabla !!} style="border-collapse: collapse; margin-top: 10px;">
@@ -119,12 +119,11 @@
 
         <div style="{{ $h2 }}">Usuarios con mayor consumo</div>
         <table {!! $tabla !!} style="border-collapse: collapse;">
-            <tr><td style="{{ $th }}">#</td><td style="{{ $th }}">Usuario</td><td style="{{ $th }}">Clave</td><td style="{{ $th }} text-align: right;">Impresiones</td><td style="{{ $th }} text-align: right;">Copias</td><td style="{{ $th }} text-align: right;">Costo</td></tr>
+            <tr><td style="{{ $th }}">#</td><td style="{{ $th }}">Usuario</td><td style="{{ $th }} text-align: right;">Impresiones</td><td style="{{ $th }} text-align: right;">Copias</td><td style="{{ $th }} text-align: right;">Costo</td></tr>
             @foreach ($datos['usuarios'] as $u)
                 <tr>
                     <td style="{{ $td }} color: #94a3b8;">{{ $loop->iteration }}</td>
                     <td style="{{ $td }}">{{ $u->nombre_cuenta }}</td>
-                    <td style="{{ $td }} color: #64748b;">{{ $u->id_cuenta }}</td>
                     <td style="{{ $num }}">{{ $n($u->impresiones) }}</td>
                     <td style="{{ $num }}">{{ $n($u->copias) }}</td>
                     <td style="{{ $num }}">{{ $q($u->costo_total) }}</td>
@@ -133,6 +132,30 @@
         </table>
     @else
         <p style="margin-top: 20px; font-size: 12px; color: #64748b;">El consumo por usuario y por unidad aparece desde la segunda lectura de las cuentas de las impresoras (6:02 pm).</p>
+    @endif
+
+    {{-- Qué imprimió cada usuario (registro de trabajos de las impresoras) --}}
+    @if ($datos['por_usuario']->isNotEmpty())
+        @php $limite = 25; @endphp
+        <div style="{{ $h2 }}">Qué imprimió cada usuario</div>
+        <p style="margin: 0 0 10px; font-size: 12px; color: #64748b;">Según el registro de trabajos de las impresoras: usuario, páginas e impresoras, con sus documentos de más páginas.@if ($datos['por_usuario']->count() > $limite) Se muestran los {{ $limite }} usuarios con más páginas de {{ $datos['por_usuario']->count() }}; todos van en el Excel adjunto.@endif</p>
+        @foreach ($datos['por_usuario']->take($limite) as $u)
+            <table {!! $tabla !!} style="border-collapse: collapse; margin-bottom: 10px; border: 1px solid #e5e9f0;">
+                <tr style="background: #f6f8fb;">
+                    <td style="padding: 7px 10px; font-size: 13px;"><b>{{ $u->quien }}</b> <span style="color: #64748b;">· {{ implode(', ', $u->impresoras) }}</span></td>
+                    <td style="padding: 7px 10px; font-size: 13px; text-align: right; white-space: nowrap;"><b>{{ $n($u->paginas) }}</b> pág. · {{ $n($u->trabajos) }} {{ $u->trabajos === 1 ? 'trabajo' : 'trabajos' }}</td>
+                </tr>
+                @foreach ($u->documentos->take(5) as $d)
+                    <tr>
+                        <td style="padding: 4px 10px 4px 18px; font-size: 12px; color: #334155; border-top: 1px solid #edf0f5; word-break: break-all;">{{ \Illuminate\Support\Str::limit($d->documento, 70) }}</td>
+                        <td style="padding: 4px 10px; font-size: 12px; color: #64748b; text-align: right; white-space: nowrap; border-top: 1px solid #edf0f5;">{{ $n($d->paginas) }} pág.@if ($d->veces > 1) · {{ $d->veces }} veces @endif</td>
+                    </tr>
+                @endforeach
+                @if ($u->documentos->count() > 5)
+                    <tr><td colspan="2" style="padding: 4px 10px 6px 18px; font-size: 11px; color: #94a3b8; border-top: 1px solid #edf0f5;">y {{ $u->documentos->count() - 5 }} documentos más (en el Excel adjunto)</td></tr>
+                @endif
+            </table>
+        @endforeach
     @endif
 
     @if ($datos['hora_pico'])

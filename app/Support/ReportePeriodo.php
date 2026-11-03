@@ -100,6 +100,7 @@ class ReportePeriodo
             'usuarios' => $cuentas->porUsuario()->take(10),
             'unidades' => $cuentas->porUnidad(),
             'hora_pico' => $hora[0] ?? null,
+            'por_usuario' => $this->trabajosPorUsuario(),
             'bolson' => $r['bolson'] ? ['contrato' => $r['contrato'], 'acumulado' => $r['acumulado'], 'bolson' => $r['bolson'],
                 'porcentaje' => $r['porcentaje'], 'disponible' => $r['disponible'], 'agotamiento' => $r['agotamiento']] : null,
             'toner' => $this->dispositivos->mapWithKeys(fn ($d) => [$d->id => $d->estado['toner']['pct'] ?? null]),
@@ -178,13 +179,50 @@ class ReportePeriodo
     /** @return list<array{titulo:string,headings:array,rows:array}> */
     public function hojas(bool $conTrabajos = true): array
     {
-        $hojas = [$this->resumen(), $this->hojaAtencion(), $this->impresoras(), $this->diario(), $this->papel(), $this->toner(), $this->usuarios(), $this->unidades(), $this->porHora()];
+        $hojas = [$this->resumen(), $this->hojaAtencion(), $this->impresoras(), $this->diario(), $this->papel(), $this->toner(), $this->usuarios(), $this->unidades(), $this->hojaTrabajosPorUsuario(), $this->porHora()];
         if ($conTrabajos) {
             $hojas[] = self::hojaTrabajos($this->trabajos());
         }
         $hojas[] = $this->ficha();
 
         return $hojas;
+    }
+
+    /**
+     * Qué imprimió cada usuario según el registro de trabajos: quién (cuenta de la impresora o, si no
+     * trae, el usuario de Windows), cuántos trabajos y páginas, en qué impresoras y qué documentos.
+     */
+    public function trabajosPorUsuario(): Collection
+    {
+        $trabajos = $this->trabajos()->with('dispositivo')->where('estado', 'completado')->get();
+
+        return $trabajos->groupBy(fn (Trabajo $t) => $t->cuenta ?: ($t->usuario ?: 'Sin identificar'))
+            ->map(fn ($ts, $quien) => (object) [
+                'quien' => $quien,
+                'trabajos' => $ts->count(),
+                'paginas' => $ts->sum('paginas'),
+                'impresion' => $ts->where('tipo', 'impresion')->sum('paginas'),
+                'copia' => $ts->where('tipo', 'copia')->sum('paginas'),
+                'escaneo' => $ts->whereIn('tipo', ['escaneo', 'envio'])->sum('paginas'),
+                'impresoras' => $ts->pluck('dispositivo.ubicacion')->filter()->unique()->values()->all(),
+                // Mismo documento impreso varias veces = una línea con sus veces y páginas.
+                'documentos' => $ts->filter(fn ($t) => filled($t->documento))->groupBy('documento')
+                    ->map(fn ($d, $doc) => (object) ['documento' => $doc, 'veces' => $d->count(), 'paginas' => $d->sum('paginas')])
+                    ->sortByDesc('paginas')->values(),
+            ])
+            ->sortByDesc('paginas')->values();
+    }
+
+    public function hojaTrabajosPorUsuario(): array
+    {
+        return [
+            'titulo' => 'Trabajos por usuario',
+            'headings' => ['Usuario', 'Trabajos', 'Páginas', 'Impresión', 'Copia', 'Escaneo', 'Impresoras', 'Documentos distintos', 'Principales documentos'],
+            'rows' => $this->trabajosPorUsuario()->map(fn ($u) => [
+                $u->quien, $u->trabajos, $u->paginas, $u->impresion, $u->copia, $u->escaneo, implode(', ', $u->impresoras), $u->documentos->count(),
+                $u->documentos->take(3)->map(fn ($d) => $d->documento.' ('.$d->paginas.' pág.)')->implode('; '),
+            ])->all(),
+        ];
     }
 
     /** Totales del período. */
@@ -284,9 +322,9 @@ class ReportePeriodo
     {
         return [
             'titulo' => 'Consumo por usuario',
-            'headings' => ['Clave', 'Usuario', 'Unidad', 'Impresiones', 'Copias', 'Escaneos', 'Costo (Q)'],
+            'headings' => ['Usuario', 'Unidad', 'Impresiones', 'Copias', 'Escaneos', 'Costo (Q)'],   // sin la clave: es personal
             'rows' => (new ConsumoCuentas($this->filtroFechas()))->porUsuario()->map(fn ($u) => [
-                $u->id_cuenta, $u->nombre_cuenta, $u->unidad, (int) $u->impresiones, (int) $u->copias, (int) $u->escaneos, round($u->costo_total, 2),
+                $u->nombre_cuenta, $u->unidad, (int) $u->impresiones, (int) $u->copias, (int) $u->escaneos, round($u->costo_total, 2),
             ])->all(),
         ];
     }
